@@ -1,36 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# One Globe (OG) — Website
 
-## Getting Started
+Marketing site for One Globe: custom sportswear, jerseys and apparel. Built
+with [Next.js](https://nextjs.org), TypeScript, and Tailwind CSS.
 
-First, run the development server:
+## Getting started
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Quote request emails
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The "Request a Quote" form (`/contact`) sends email via Gmail SMTP through
+`src/app/api/quote/route.ts`. To enable it locally:
 
-## Learn More
+1. Copy `.env.example` to `.env.local`.
+2. Generate a Gmail [App password](https://myaccount.google.com/apppasswords)
+   for the sending account (2-Step Verification must be on first).
+3. Fill in `SMTP_USER` and `SMTP_PASS` in `.env.local`, then restart the dev
+   server.
 
-To learn more about Next.js, take a look at the following resources:
+When deploying, set `SMTP_USER`, `SMTP_PASS`, and optionally
+`QUOTE_TO_EMAIL` as environment variables on the host — `.env.local` is not
+committed to git.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Design Collection
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+`/design-collection/[category]` reads image files directly from
+`public/designs/<category-slug>/` at request time — drop new images into the
+matching folder and they appear automatically, no code changes needed.
+Categories are defined in `src/lib/design-categories.ts`.
 
-## Deploy on Vercel
+## Deploying
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This project deploys cleanly to [Vercel](https://vercel.com/new) (zero
+config, the quote API route runs as a Node.js serverless function there).
