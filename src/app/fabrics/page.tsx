@@ -1,7 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import fs from "node:fs";
+import path from "node:path";
 import FabricCard from "@/components/FabricCard";
+import DesignGrid from "@/components/DesignGrid";
 import { fabrics } from "@/lib/content";
+import { listBlobImages } from "@/lib/blob";
+
+// Depends on live Blob uploads (see /admin/upload) and local files added to
+// public/fabrics/, so render per-request rather than at build time.
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Fabrics",
@@ -9,7 +17,25 @@ export const metadata: Metadata = {
     "Compare performance knits, interlocks, jacquards and meshes before we manufacture your sample.",
 };
 
-export default function FabricsPage() {
+/** Any image file in public/fabrics/ that isn't already one of the curated fabrics above. */
+function getExtraLocalFabrics() {
+  const dir = path.join(process.cwd(), "public", "fabrics");
+  if (!fs.existsSync(dir)) return [];
+  const curatedFiles = new Set(fabrics.map((f) => f.image.split("/").pop()));
+  return fs
+    .readdirSync(dir)
+    .filter((f) => /\.(jpe?g|png|webp)$/i.test(f) && !curatedFiles.has(f))
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+    .map((file) => ({ file, src: `/fabrics/${file}` }));
+}
+
+export default async function FabricsPage() {
+  const [extraLocalFabrics, uploadedFabrics] = await Promise.all([
+    getExtraLocalFabrics(),
+    listBlobImages("fabrics/"),
+  ]);
+  const moreFabrics = [...extraLocalFabrics, ...uploadedFabrics];
+
   return (
     <div>
       <section className="bg-mist px-6 py-16">
@@ -36,6 +62,17 @@ export default function FabricsPage() {
           Exact composition and GSM are available on request.
         </p>
       </section>
+
+      {moreFabrics.length > 0 && (
+        <section className="bg-mist py-16">
+          <div className="mx-auto max-w-6xl px-6">
+            <h2 className="text-2xl font-extrabold tracking-tight text-navy">More fabrics</h2>
+            <div className="mt-8">
+              <DesignGrid designs={moreFabrics} categoryLabel="fabric" pageSize={100} />
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="bg-navy py-16 text-center text-white">
         <div className="mx-auto max-w-xl px-6">

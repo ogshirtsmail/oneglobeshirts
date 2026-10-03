@@ -5,11 +5,12 @@ import path from "node:path";
 import { notFound } from "next/navigation";
 import DesignSubNav from "@/components/DesignSubNav";
 import DesignGrid from "@/components/DesignGrid";
-import { designCategories, getDesignCategory } from "@/lib/design-categories";
+import { getDesignCategory } from "@/lib/design-categories";
+import { listBlobImages } from "@/lib/blob";
 
-export function generateStaticParams() {
-  return designCategories.map((c) => ({ category: c.slug }));
-}
+// Pages depend on live Blob uploads (see /admin/upload), so they must be
+// rendered per-request rather than baked in at build time.
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
@@ -25,7 +26,7 @@ export async function generateMetadata({
   };
 }
 
-function getCategoryDesigns(slug: string) {
+function getLocalDesigns(slug: string) {
   const dir = path.join(process.cwd(), "public", "designs", slug);
   if (!fs.existsSync(dir)) return [];
   const files = fs
@@ -33,6 +34,14 @@ function getCategoryDesigns(slug: string) {
     .filter((f) => /\.(jpe?g|png|webp)$/i.test(f))
     .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   return files.map((file) => ({ file, src: `/designs/${slug}/${file}` }));
+}
+
+async function getCategoryDesigns(slug: string) {
+  const [local, uploaded] = await Promise.all([
+    getLocalDesigns(slug),
+    listBlobImages(`designs/${slug}/`),
+  ]);
+  return [...local, ...uploaded];
 }
 
 export default async function DesignCategoryPage({
@@ -44,7 +53,7 @@ export default async function DesignCategoryPage({
   const cat = getDesignCategory(category);
   if (!cat) notFound();
 
-  const designs = getCategoryDesigns(cat.slug);
+  const designs = await getCategoryDesigns(cat.slug);
 
   return (
     <div>
