@@ -1,6 +1,6 @@
 # One Globe (OG) — Website
 
-Marketing site for One Globe: custom sportswear, jerseys and apparel. Built
+Marketing site for One Globe: custom sportswear,  jerseys and apparel. Built
 with [Next.js](https://nextjs.org), TypeScript, and Tailwind CSS.
 
 ## Getting started
