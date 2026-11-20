@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design your shirt</title>
+<style>
+:root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1f;--mute:#6b6b70;--line:#dcdad4;--accent:#1f4fd8;--accent-ink:#fff}
+@media (prefers-color-scheme:dark){:root{--bg:#17171a;--card:#202024;--ink:#f1f1f3;--mute:#a0a0a8;--line:#35353b;--accent:#6b8cff;--accent-ink:#0d0d12}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1040px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:1.8rem;margin:0 0 4px} h2{font-size:1.3rem;margin:0 0 4px}
+.sub,.cap{color:var(--mute)} .sub{margin:0 0 24px} .cap{margin:0 0 8px;font-size:.9rem}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px}
+.edwrap{max-width:420px;margin:0 auto}
+canvas{display:block;width:100%;height:auto}
+#ed{touch-action:none;cursor:grab}
+.hint{text-align:center;color:var(--mute);font-size:.85rem;margin:10px 0 0}
+.tabs{display:flex;gap:8px;justify-content:center;margin-bottom:12px}
+fieldset{border:0;padding:0;margin:0 0 20px}
+legend,label.t{font-weight:600;margin-bottom:8px;display:block;padding:0}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.sw{width:34px;height:34px;border-radius:50%;border:2px solid var(--line);cursor:pointer;padding:0}
+.sw[aria-pressed=true]{outline:3px solid var(--accent);outline-offset:2px}
+.size{min-width:52px;padding:8px 12px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;cursor:pointer;font:inherit}
+.size[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.up{border:1px dashed var(--line);border-radius:10px;padding:12px;margin-bottom:10px}
+.up input[type=file]{width:100%;font:inherit}
+button.link{background:none;border:0;color:var(--accent);cursor:pointer;font:inherit;padding:0}
+input[type=number],input[type=text],input[type=email]{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);width:100%}
+input[type=number]{width:80px}
+.cta,.dl{padding:12px 18px;border-radius:10px;font:inherit;cursor:pointer}
+.cta{width:100%;border:0;background:var(--accent);color:var(--accent-ink);font-weight:600;padding:14px}
+.cta:disabled{opacity:.5;cursor:not-allowed}
+.dl{border:1px solid var(--line);background:var(--card);color:var(--ink)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.err{color:#c0392b;font-size:.9rem;min-height:1.3em;margin:4px 0 0}
+#summary{white-space:pre-line;margin-top:14px;font-size:.95rem}
+.li{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;cursor:pointer}
+.li.on{border-color:var(--accent);background:rgba(31,79,216,.07)}
+.li img{width:34px;height:34px;object-fit:contain;border-radius:4px;background:conic-gradient(#c9c9c9 25%,#fff 0 50%,#c9c9c9 0 75%,#fff 0);background-size:10px 10px}
+.li span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.92rem}
+#lp{border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:10px;display:none}
+#lp .rg{display:flex;align-items:center;gap:10px;margin:8px 0} #lp .rg label{width:64px;font-size:.9rem} #lp .rg input{flex:1}
+.chk{display:flex;gap:8px;align-items:center;font-size:.92rem;margin:8px 0}
+.final{margin-top:24px;text-align:center}
+.finals{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:14px 0}
+@media(max-width:560px){.finals{grid-template-columns:1fr}}
+.finals figcaption{font-weight:600;margin-top:6px} .finals figure{margin:0}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>Design your shirt</h1>
+  <p class="sub">Add as many logos as you need on the front and back, then check the finished design.</p>
+
+  <div class="grid">
+    <section class="panel" aria-label="Shirt editor">
+      <div class="tabs">
+        <button type="button" class="size" id="tabFront" aria-pressed="true">Front</button>
+        <button type="button" class="size" id="tabBack" aria-pressed="false">Back</button>
+      </div>
+      <div class="edwrap"><canvas id="ed" aria-label="Shirt editor"></canvas></div>
+      <p class="hint">Click a logo to select it, drag to move it. You can also drop images onto the shirt.</p>
+    </section>
+
+    <section class="panel" aria-label="Options">
+      <fieldset><legend>Who is it for?</legend><div class="row" id="fits"></div></fieldset>
+      <fieldset><legend>Shirt type</legend><div class="row" id="sleeves"></div></fieldset>
+      <fieldset><legend>Fabric</legend><div class="row" id="fabrics"></div><p class="cap" id="fabNote" style="margin:8px 0 0"></p></fieldset>
+      <fieldset>
+        <legend>Collar</legend>
+        <div class="row" id="collarMode"></div>
+        <div id="collarBox" style="display:none;margin-top:12px">
+          <p class="cap" style="margin:0 0 8px">Buttons</p>
+          <div class="row" id="buttonMode" style="margin-bottom:12px"></div>
+          <p class="cap" style="margin:0 0 8px">Collar colour</p>
+          <div class="row" id="collarColors"></div>
+          <label class="chk">Or pick any colour <input type="color" id="collarCustom" value="#ffffff" aria-label="Custom collar colour"></label>
+          <p class="cap" id="collarName" style="margin:0"></p>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Sleeve ribbon</legend>
+        <div class="row" id="ribbonMode"></div>
+        <div id="ribbonBox" style="display:none;margin-top:12px">
+          <p class="cap" style="margin:0 0 8px">Ribbon colour</p>
+          <div class="row" id="ribbonColors"></div>
+          <label class="chk">Or pick any colour <input type="color" id="ribbonCustom" value="#c0302b" aria-label="Custom ribbon colour"></label>
+          <p class="cap" id="ribbonName" style="margin:0"></p>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Shirt colour</legend>
+        <div id="colorBox">
+          <div class="row" id="colors"></div>
+          <label class="chk">Or pick any colour <input type="color" id="customColor" value="#ff6600" aria-label="Custom shirt colour"></label>
+          <p class="cap" id="colorName" style="margin:0"></p>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Your own shirt (optional)</legend>
+        <p class="cap">Upload a photo or mockup of your shirt for the <b class="sideName">front</b>. Your logos are placed on it.</p>
+        <div class="up"><input type="file" id="fBase" accept="image/*,.svg" aria-label="Upload your shirt image">
+          <div class="row" style="margin-top:6px"><span class="cap" id="baseName" style="margin:0"></span><button type="button" class="link" id="rBase" style="display:none">Use built-in shirt</button></div></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Logos on the <span class="sideName">front</span> <span class="cap" id="count" style="font-weight:400"></span></legend>
+        <div class="up"><input type="file" id="fLogos" accept="image/*,.svg" multiple aria-label="Add logos"></div>
+        <div id="logoList"></div>
+        <button type="button" class="link" id="sample">No files handy? Add sample logos</button>
+        <p class="err" id="err" role="alert"></p>
+
+        <div id="lp" aria-label="Selected logo">
+          <div class="row" id="presets"></div>
+          <div class="rg"><label for="lSize">Size</label><input type="range" id="lSize" min="5" max="100"></div>
+          <div class="rg"><label for="lRot">Rotate</label><input type="range" id="lRot" min="-180" max="180"></div>
+          <label class="chk"><input type="checkbox" id="lBg"> Remove background from this logo</label>
+          <div class="rg" id="tolRow"><label for="lTol">Sensitivity</label><input type="range" id="lTol" min="10" max="150"></div>
+          <div class="row"><button type="button" class="dl" id="lDup">Duplicate</button><button type="button" class="dl" id="lDel">Delete</button></div>
+        </div>
+      </fieldset>
+
+      <fieldset><legend>Size</legend><div class="row" id="sizes"></div></fieldset>
+      <fieldset><label class="t" for="qty">Quantity</label><input type="number" id="qty" min="1" max="500" value="1"></fieldset>
+      <fieldset>
+        <label class="t" for="name">Your name</label><input type="text" id="name" autocomplete="name" style="margin-bottom:10px">
+        <label class="t" for="email">Email</label><input type="email" id="email" autocomplete="email">
+      </fieldset>
+      <button class="cta" id="submit" disabled>Add to order</button>
+      <div id="summary" aria-live="polite"></div>
+    </section>
+  </div>
+
+  <section class="panel final" aria-label="Completed design">
+    <h2>Your completed design</h2>
+    <p class="cap" id="cap"></p>
+    <div class="finals">
+      <figure><canvas id="cvFront" role="img" aria-label="Completed front"></canvas><figcaption>Front</figcaption></figure>
+      <figure><canvas id="cvBack" role="img" aria-label="Completed back"></canvas><figcaption>Back</figcaption></figure>
+    </div>
+    <div class="row" style="justify-content:center">
+      <button type="button" class="dl" id="dlFront">Download front</button>
+      <button type="button" class="dl" id="dlBack">Download back</button>
+      <button type="button" class="dl" id="dlBoth">Download front + back</button>
+    </div>
+  </section>
+</main>
+
+<script>
+// ---- Settings: change these for your shop ----
+const FITS=["Men","Women","Kids"];
+const SIZES={Men:["XS","S","M","L","XL","2XL","3XL"],Women:["XS","S","M","L","XL","2XL"],Kids:["2-3Y","4-5Y","6-7Y","8-9Y","10-11Y","12-13Y"]};
+const WHITE=["White","#ffffff"];   // default shirt colour
+const COLORS=[WHITE,["Black","#1b1b1d"],["Charcoal","#3d3d42"],["Heather gray","#b8b8bc"],["Navy","#1f2d4d"],["Royal blue","#2450c8"],["Sky blue","#7fb8e6"],["Teal","#17897d"],["Forest","#2f5d44"],["Lime","#8cc63f"],["Yellow","#f4c20d"],["Orange","#ee7a1a"],["Red","#c0302b"],["Maroon","#6e1f2c"],["Pink","#ee86b0"],["Purple","#6b3fa0"],["Brown","#6b4a33"]];
+const SLEEVES=["Half sleeve","Full sleeve"];
+const FABRICS=[["Cotton","Soft and breathable, great for everyday wear."],["Polyester","Lightweight, quick-drying and holds color well."],["Sports jersey","Moisture-wicking mesh knit with a V-neck on the front, built for teams."]];
+const MAX_LOGOS=10;               // logos allowed per side
+const MAX_MB=5;
+const ORDER_ENDPOINT="";          // your server URL that receives the order (form data)
+
+const W=400,H=460,$=id=>document.getElementById(id);
+const COLLARS=["Without collar","With collar"];
+const BUTTONS=["With buttons","Without buttons"];
+const RIBBONS=["Without ribbon","With ribbon"];
+const state={fit:"Men",ribbon:RIBBONS[0],ribbonColor:null,collar:COLLARS[0],buttons:BUTTONS[0],collarColor:null,side:"front",color:WHITE,sleeve:SLEEVES[0],fabric:FABRICS[0][0],size:null,sel:null,
+  sides:{front:{base:null,baseFile:null,logos:[]},back:{base:null,baseFile:null,logos:[]}}};
+let uid=0;
+const cur=()=>state.sides[state.side];
+const selLogo=()=>cur().logos.find(l=>l.id===state.sel);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+
+// ---- Image loading (works with any browser-readable image) ----
+const readURL=f=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>rej(r.error);r.readAsDataURL(f);});
+const loadImg=src=>new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error("decode"));i.src=src;});
+async function toImage(file){
+  let src=await readURL(file);
+  if(/svg/i.test(file.type)||/\.svg$/i.test(file.name)){
+    let t=await file.text();
+    if(!/<svg[^>]*\swidth=/i.test(t)){const m=t.match(/viewBox=["']\s*[\d.\-]+[\s,]+[\d.\-]+[\s,]+([\d.]+)[\s,]+([\d.]+)/i);
+      t=t.replace(/<svg/i,m?`<svg width="${m[1]}" height="${m[2]}"`:'<svg width="300" height="300"');}
+    src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(t);
+  }
+  try{return await loadImg(src);}catch(e){}
+  if(window.createImageBitmap){
+    const b=await createImageBitmap(file),c=document.createElement("canvas");c.width=b.width;c.height=b.height;
+    c.getContext("2d").drawImage(b,0,0);return await loadImg(c.toDataURL("image/png"));
+  }
+  throw new Error("decode");
+}
+function fail(file){
+  $("err").textContent=`Couldn't read "${file.name}" (${file.type||"unknown type"}, ${Math.round(file.size/1024)} KB). It may be a HEIC/AVIF photo or a damaged file. Save it as PNG or JPG and try again.`;
+}
+
+// ---- Remove background from a logo (edge flood fill, then crop to the artwork) ----
+function extractPrint(img,tol){
+  const sc=Math.min(1,1000/Math.max(img.naturalWidth,img.naturalHeight));
+  const w=Math.max(1,Math.round(img.naturalWidth*sc)),h=Math.max(1,Math.round(img.naturalHeight*sc));
+  const c=document.createElement("canvas");c.width=w;c.height=h;
+  const x=c.getContext("2d",{willReadFrequently:true});x.drawImage(img,0,0,w,h);
+  const id=x.getImageData(0,0,w,h),d=id.data,bins=new Map();
+  const add=p=>{const i=p*4;if(d[i+3]<20)return;const k=(d[i]>>4)<<8|(d[i+1]>>4)<<4|(d[i+2]>>4),e=bins.get(k)||[0,0,0,0];e[0]++;e[1]+=d[i];e[2]+=d[i+1];e[3]+=d[i+2];bins.set(k,e);};
+  for(let i=0;i<w;i++){add(i);add((h-1)*w+i);} for(let j=0;j<h;j++){add(j*w);add(j*w+w-1);}
+  let best=null;bins.forEach(e=>{if(!best||e[0]>best[0])best=e;});
+  const bg=best?[best[1]/best[0],best[2]/best[0],best[3]/best[0]]:[255,255,255],t2=tol*tol;
+  const isBg=p=>{const i=p*4;if(d[i+3]<20)return true;const a=d[i]-bg[0],b=d[i+1]-bg[1],e=d[i+2]-bg[2];return a*a+b*b+e*e<=t2;};
+  const rm=new Uint8Array(w*h),st=new Int32Array(w*h);let sp=0;
+  const push=p=>{if(!rm[p]&&isBg(p)){rm[p]=1;st[sp++]=p;}};
+  for(let i=0;i<w;i++){push(i);push((h-1)*w+i);} for(let j=0;j<h;j++){push(j*w);push(j*w+w-1);}
+  while(sp){const p=st[--sp],px=p%w,py=(p/w)|0;if(px>0)push(p-1);if(px<w-1)push(p+1);if(py>0)push(p-w);if(py<h-1)push(p+w);}
+  let x0=w,y0=h,x1=-1,y1=-1;
+  for(let p=0;p<w*h;p++){
+    const i=p*4,px=p%w,py=(p/w)|0;
+    if(rm[p]){d[i+3]=0;continue;}
+    if((px>0&&rm[p-1])||(px<w-1&&rm[p+1])||(py>0&&rm[p-w])||(py<h-1&&rm[p+w])){
+      const a=d[i]-bg[0],b=d[i+1]-bg[1],e=d[i+2]-bg[2];
+      d[i+3]=Math.round(d[i+3]*clamp((Math.sqrt(a*a+b*b+e*e)-tol*.5)/(tol+10),0,1));
+    }
+    if(d[i+3]>8){if(px<x0)x0=px;if(px>x1)x1=px;if(py<y0)y0=py;if(py>y1)y1=py;}
+  }
+  if(x1<0) return null;
+  x.putImageData(id,0,0);
+  x0=Math.max(0,x0-2);y0=Math.max(0,y0-2);x1=Math.min(w-1,x1+2);y1=Math.min(h-1,y1+2);
+  const out=document.createElement("canvas");out.width=x1-x0+1;out.height=y1-y0+1;
+  out.getContext("2d").drawImage(c,x0,y0,out.width,out.height,0,0,out.width,out.height);
+  return out;
+}
+
+// ---- Drawing: built-in shirt (front/back) or the customer's own shirt image, plus logos ----
+// Shirt outline for each fit (left half; the right half is mirrored).
+// sh = shoulder, top/bot = sleeve end, pit = armpit, hem = bottom of the shirt
+const FIT_SHAPES={
+  "Men":  {sh:[60,50],half:{top:[10,130],bot:[55,160],pit:[85,130]},full:{top:[8,320],bot:[52,330],pit:[85,160]},hem:440,waist:null},
+  "Women":{sh:[74,50],half:{top:[34,116],bot:[68,140],pit:[96,124]},full:{top:[24,316],bot:[64,324],pit:[96,152]},hem:440,waist:[122,270],hip:92},
+  "Kids": {sh:[52,52],half:{top:[16,116],bot:[52,140],pit:[80,120]},full:{top:[16,292],bot:[56,300],pit:[80,148]},hem:400,waist:null}
+};
+function geo(){
+  const f=FIT_SHAPES[state.fit],s=state.sleeve==="Full sleeve"?f.full:f.half;
+  return {sh:f.sh,top:s.top,bot:s.bot,pit:s.pit,hem:f.hem,waist:f.waist,hip:f.hip};
+}
+function shirtD(side){
+  const g=geo(),v=side==="front"&&state.fabric==="Sports jersey"&&state.collar==="Without collar";
+  const R=p=>(400-p[0])+" "+p[1],P=p=>p[0]+" "+p[1];
+  let body;
+  if(g.waist){ // shaped waist and slightly curved hem
+    const hx=g.hip;
+    body=`Q${P(g.waist)} ${hx} ${g.hem-10} Q${hx} ${g.hem} ${hx+12} ${g.hem} Q200 ${g.hem+6} ${400-hx-12} ${g.hem} Q${400-hx} ${g.hem} ${400-hx} ${g.hem-10} Q${R(g.waist)} ${R(g.pit)}`;
+  }else{
+    const x=g.pit[0];
+    body=`L${x} ${g.hem-10} Q${x} ${g.hem} ${x+10} ${g.hem} L${400-x-10} ${g.hem} Q${400-x} ${g.hem} ${400-x} ${g.hem-10} L${R(g.pit)}`;
+  }
+  return `M130 20 L${P(g.sh)} L${P(g.top)} L${P(g.bot)} L${P(g.pit)} ${body} L${R(g.bot)} L${R(g.top)} L${R(g.sh)} L270 20 `+(v?"L200 90 L130 20":side==="front"?"Q200 70 130 20":"Q200 38 130 20")+" Z";
+}
+function collarD(side){
+  return side==="front"&&state.fabric==="Sports jersey"&&state.collar==="Without collar"?"M130 20 L200 90 L270 20":"M130 20 Q200 "+(side==="front"?70:38)+" 270 20";
+}
+function shade(hex,f){
+  const n=parseInt(hex.slice(1),16),m=v=>Math.round(f<0?v*(1+f):v+(255-v)*f);
+  return "rgb("+m(n>>16&255)+","+m(n>>8&255)+","+m(n&255)+")";
+}
+function drawCollar(c,side){
+  const col=state.collarColor?state.collarColor[1]:state.color[1];
+  const edge="rgba(0,0,0,.38)",stitch="rgba(0,0,0,.22)";
+  c.save();c.lineJoin="round";c.lineCap="round";
+  if(side==="front"){
+    // inside of the collar at the back of the neck
+    c.beginPath();c.moveTo(130,20);c.quadraticCurveTo(200,70,270,20);c.quadraticCurveTo(200,36,130,20);c.closePath();
+    c.fillStyle=shade(col,-.28);c.fill();c.strokeStyle=edge;c.lineWidth=1.5;c.stroke();
+    // button placket
+    if(state.buttons==="With buttons"){
+    c.fillStyle=state.color[1];c.beginPath();c.rect(191,48,18,104);c.fill();
+    c.strokeStyle=edge;c.lineWidth=1.5;c.stroke();
+    c.strokeStyle=stitch;c.lineWidth=1;c.setLineDash([3,3]);
+    c.beginPath();c.moveTo(194,52);c.lineTo(194,150);c.moveTo(206,52);c.lineTo(206,150);c.stroke();c.setLineDash([]);
+    [78,104,130].forEach(y=>{c.beginPath();c.arc(200,y,3.6,0,7);c.fillStyle="rgba(255,255,255,.95)";c.fill();c.strokeStyle=edge;c.lineWidth=1;c.stroke();
+      c.fillStyle="rgba(0,0,0,.35)";[-1.2,1.2].forEach(d=>{c.beginPath();c.arc(200+d,y,.7,0,7);c.fill();});});
+    }
+    // two collar points folded over the shoulders
+    [1,-1].forEach(sx=>{
+      const X=x=>200+sx*(x-200);
+      c.beginPath();
+      c.moveTo(X(120),14);
+      c.quadraticCurveTo(X(124),52,X(154),86);      // outer edge down to the point
+      c.lineTo(X(199),50);                          // point back up to the centre
+      c.quadraticCurveTo(X(168),36,X(134),20);      // fold line along the neck
+      c.closePath();
+      c.fillStyle=col;c.fill();c.strokeStyle=edge;c.lineWidth=2;c.stroke();
+      // stitching just inside the edge
+      c.beginPath();c.moveTo(X(127),22);c.quadraticCurveTo(X(131),52,X(155),78);c.lineTo(X(189),52);
+      c.strokeStyle=stitch;c.lineWidth=1;c.setLineDash([3,3]);c.stroke();c.setLineDash([]);
+      // soft shadow where it folds
+      c.beginPath();c.moveTo(X(136),22);c.quadraticCurveTo(X(168),38,X(197),52);
+      c.strokeStyle="rgba(0,0,0,.18)";c.lineWidth=3;c.stroke();
+    });
+  }else{
+    // collar seen from behind: stand plus the folded-down collar
+    c.beginPath();c.moveTo(124,14);c.quadraticCurveTo(200,38,276,14);
+    c.lineTo(282,34);c.quadraticCurveTo(200,62,118,34);c.closePath();
+    c.fillStyle=col;c.fill();c.strokeStyle=edge;c.lineWidth=2;c.stroke();
+    c.beginPath();c.moveTo(126,20);c.quadraticCurveTo(200,44,274,20);
+    c.strokeStyle="rgba(0,0,0,.2)";c.lineWidth=2;c.stroke();
+    c.beginPath();c.moveTo(122,30);c.quadraticCurveTo(200,56,278,30);
+    c.strokeStyle=stitch;c.lineWidth=1;c.setLineDash([3,3]);c.stroke();c.setLineDash([]);
+  }
+  c.restore();
+}
+// band of colour around the end of each sleeve
+function drawRibbon(c){
+  const col=state.ribbonColor[1],B=14,g=geo();
+  // [end top, end bottom, toward shoulder (top edge), toward armpit (bottom edge)]
+  const L=[g.top,g.bot,g.sh,g.pit];
+  const mv=(a,b)=>{const dx=b[0]-a[0],dy=b[1]-a[1],n=Math.hypot(dx,dy);return[a[0]+dx/n*B,a[1]+dy/n*B];};
+  c.save();c.lineJoin="round";
+  [1,-1].forEach(sx=>{
+    const X=p=>[200+sx*(p[0]-200),p[1]],a=X(L[0]),b=X(L[1]),a2=X(mv(L[0],L[2])),b2=X(mv(L[1],L[3]));
+    c.beginPath();c.moveTo(...a);c.lineTo(...b);c.lineTo(...b2);c.lineTo(...a2);c.closePath();
+    c.fillStyle=col;c.fill();c.strokeStyle="rgba(0,0,0,.35)";c.lineWidth=1.5;c.stroke();
+    const m=(p,q,t)=>[p[0]+(q[0]-p[0])*t,p[1]+(q[1]-p[1])*t];
+    c.beginPath();c.moveTo(...m(a,a2,.5));c.lineTo(...m(b,b2,.5));
+    c.strokeStyle="rgba(0,0,0,.25)";c.lineWidth=1;c.setLineDash([3,3]);c.stroke();c.setLineDash([]);
+  });
+  c.restore();
+}
+function drawSide(cv,side,scale,editor){
+  cv.width=W*scale;cv.height=H*scale;
+  const c=cv.getContext("2d");c.setTransform(scale,0,0,scale,0,0);
+  const S=state.sides[side];
+  if(S.base){
+    const k=Math.min(W/S.base.naturalWidth,H/S.base.naturalHeight),w=S.base.naturalWidth*k,h=S.base.naturalHeight*k;
+    c.drawImage(S.base,(W-w)/2,(H-h)/2,w,h);
+  }else{
+    const p=new Path2D(shirtD(side));
+    c.fillStyle=state.color[1];c.fill(p);
+    c.strokeStyle="rgba(0,0,0,.25)";c.lineWidth=2;c.stroke(p);c.stroke(new Path2D(collarD(side)));
+    if(state.ribbon==="With ribbon")drawRibbon(c);
+    if(state.collar==="With collar")drawCollar(c,side);
+  }
+  S.logos.forEach(l=>{
+    const w=W*l.w/100,h=w*l.img.naturalHeight/l.img.naturalWidth;
+    c.save();c.translate(W*l.x/100,H*l.y/100);c.rotate(l.rot*Math.PI/180);
+    c.drawImage(l.img,-w/2,-h/2,w,h);
+    if(editor&&l.id===state.sel){c.strokeStyle="#1f4fd8";c.lineWidth=2;c.setLineDash([6,4]);c.strokeRect(-w/2-3,-h/2-3,w+6,h+6);}
+    c.restore();
+  });
+}
+function renderAll(){
+  drawSide($("ed"),state.side,2,true);
+  drawSide($("cvFront"),"front",1.5);drawSide($("cvBack"),"back",1.5);
+  const f=state.sides.front.logos.length,b=state.sides.back.logos.length;
+  $("cap").textContent=`${state.fit} · ${state.color[0]} ${state.fabric.toLowerCase()} ${state.sleeve.toLowerCase()}${state.collar==="With collar"?" · collar: "+(state.collarColor?state.collarColor[0]:"matches shirt")+" · "+state.buttons.toLowerCase():" · no collar"}${state.ribbon==="With ribbon"?" · "+state.ribbonColor[0].toLowerCase()+" sleeve ribbon":""} · Size ${state.size||"not chosen yet"} · Qty ${$("qty").value} · ${f} logo${f===1?"":"s"} on front, ${b} on back`;
+  $("submit").disabled=!(state.size&&(f+b));
+}
+
+// ---- Logos ----
+const PRESETS=[["Upper left",37,27],["Upper right",63,27],["Top center",50,24],["Center",50,45],["Lower center",50,72]];
+PRESETS.forEach(([n,x,y])=>{const b=document.createElement("button");b.type="button";b.className="dl";b.style.padding="6px 10px";b.textContent=n;
+  b.onclick=()=>{const l=selLogo();if(l){l.x=x;l.y=y;renderAll();}};$("presets").appendChild(b);});
+const AUTO=[[63,27],[37,27],[50,48],[50,72],[50,24],[28,45],[72,45],[28,72],[72,72],[50,36]];
+async function addLogos(files){
+  $("err").textContent="";
+  for(const file of files){
+    const S=cur();
+    if(S.logos.length>=MAX_LOGOS){$("err").textContent=`You can add up to ${MAX_LOGOS} logos per side.`;break;}
+    if(file.size>MAX_MB*1024*1024){$("err").textContent=`"${file.name}" is too large. Maximum is ${MAX_MB} MB.`;continue;}
+    let img;try{img=await toImage(file);}catch(e){fail(file);continue;}
+    const [x,y]=AUTO[S.logos.length%AUTO.length];
+    S.logos.push({id:++uid,name:file.name,file,orig:img,img,x,y,w:22,rot:0,bg:false,tol:45,out:null});
+    state.sel=uid;
+  }
+  $("fLogos").value="";refresh();
+}
+function renderList(){
+  const box=$("logoList");box.innerHTML="";
+  cur().logos.forEach(l=>{
+    const row=document.createElement("div");row.className="li"+(l.id===state.sel?" on":"");
+    const im=document.createElement("img");im.src=l.img.src;im.alt="";
+    const nm=document.createElement("span");nm.textContent=l.name;
+    const del=document.createElement("button");del.type="button";del.className="link";del.textContent="Remove";
+    del.onclick=e=>{e.stopPropagation();removeLogo(l.id);};
+    row.append(im,nm,del);row.onclick=()=>select(l.id);box.appendChild(row);
+  });
+  $("count").textContent=`(${cur().logos.length} of ${MAX_LOGOS})`;
+}
+function syncPanel(){
+  const l=selLogo();$("lp").style.display=l?"block":"none";if(!l)return;
+  $("lSize").value=l.w;$("lRot").value=l.rot;$("lBg").checked=l.bg;$("lTol").value=l.tol;$("tolRow").style.display=l.bg?"flex":"none";
+}
+function refresh(){renderList();syncPanel();renderAll();}
+function select(id){state.sel=id;refresh();}
+function removeLogo(id){const S=cur();S.logos=S.logos.filter(l=>l.id!==id);if(state.sel===id)state.sel=null;refresh();}
+async function reprocess(l){
+  const t=l.tok=(l.tok||0)+1;
+  if(!l.bg){l.img=l.orig;l.out=null;}
+  else{
+    const out=extractPrint(l.orig,l.tol);
+    if(!out){$("err").textContent="Nothing was left after removing the background. Lower the sensitivity.";l.img=l.orig;l.out=null;}
+    else{$("err").textContent="";const im=await loadImg(out.toDataURL("image/png"));if(t!==l.tok)return;l.img=im;l.out=out;}
+  }
+  refresh();
+}
+let tolTimer;
+$("lSize").oninput=e=>{const l=selLogo();if(l){l.w=+e.target.value;renderAll();}};
+$("lRot").oninput=e=>{const l=selLogo();if(l){l.rot=+e.target.value;renderAll();}};
+$("lBg").onchange=e=>{const l=selLogo();if(l){l.bg=e.target.checked;reprocess(l);}};
+$("lTol").oninput=e=>{const l=selLogo();if(l){l.tol=+e.target.value;clearTimeout(tolTimer);tolTimer=setTimeout(()=>reprocess(l),120);}};
+$("lDel").onclick=()=>{if(state.sel)removeLogo(state.sel);};
+$("lDup").onclick=()=>{const l=selLogo();if(!l||cur().logos.length>=MAX_LOGOS)return;
+  const n={...l,id:++uid,x:clamp(l.x+6,0,100),y:clamp(l.y+6,0,100)};cur().logos.push(n);state.sel=n.id;refresh();};
+$("fLogos").onchange=e=>addLogos([...e.target.files]);
+
+// ---- Editor: select and drag logos on the canvas ----
+$("ed").addEventListener("pointerdown",e=>{
+  const ed=$("ed"),r=ed.getBoundingClientRect(),k=W/r.width,px=(e.clientX-r.left)*k,py=(e.clientY-r.top)*k;
+  let hit=null;const L=cur().logos;
+  for(let i=L.length-1;i>=0&&!hit;i--){
+    const l=L[i],a=-l.rot*Math.PI/180,dx=px-W*l.x/100,dy=py-H*l.y/100;
+    const lx=dx*Math.cos(a)-dy*Math.sin(a),ly=dx*Math.sin(a)+dy*Math.cos(a);
+    const w=W*l.w/100,h=w*l.img.naturalHeight/l.img.naturalWidth;
+    if(Math.abs(lx)<=w/2&&Math.abs(ly)<=h/2)hit=l;
+  }
+  select(hit?hit.id:null);
+  if(!hit)return;
+  e.preventDefault();ed.setPointerCapture(e.pointerId);ed.style.cursor="grabbing";
+  const s={x:e.clientX,y:e.clientY,lx:hit.x,ly:hit.y};
+  const mv=ev=>{hit.x=clamp(s.lx+(ev.clientX-s.x)*k/W*100,0,100);hit.y=clamp(s.ly+(ev.clientY-s.y)*k/H*100,0,100);renderAll();};
+  const up=()=>{ed.style.cursor="grab";ed.removeEventListener("pointermove",mv);ed.removeEventListener("pointerup",up);};
+  ed.addEventListener("pointermove",mv);ed.addEventListener("pointerup",up);
+});
+const ed=$("ed");
+ed.addEventListener("dragover",e=>e.preventDefault());
+ed.addEventListener("drop",e=>{e.preventDefault();addLogos([...e.dataTransfer.files]);});
+
+// ---- Own shirt image ----
+$("fBase").onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;$("err").textContent="";
+  if(f.size>MAX_MB*1024*1024){$("err").textContent=`That file is too large. Maximum is ${MAX_MB} MB.`;return;}
+  try{const img=await toImage(f);const S=cur();S.base=img;S.baseFile=f;syncBase();renderAll();}catch(x){fail(f);$("fBase").value="";}
+};
+$("rBase").onclick=()=>{const S=cur();S.base=null;S.baseFile=null;$("fBase").value="";syncBase();renderAll();};
+function syncBase(){const S=cur();$("baseName").textContent=S.baseFile?"Using: "+S.baseFile.name:"Using the built-in shirt";$("rBase").style.display=S.baseFile?"":"none";}
+
+// ---- Front / back tabs ----
+function setSide(side){
+  state.side=side;state.sel=null;$("err").textContent="";
+  $("tabFront").setAttribute("aria-pressed",side==="front");$("tabBack").setAttribute("aria-pressed",side==="back");
+  document.querySelectorAll(".sideName").forEach(n=>n.textContent=side);
+  $("fBase").value="";syncBase();refresh();
+}
+$("tabFront").onclick=()=>setSide("front");$("tabBack").onclick=()=>setSide("back");
+
+// ---- Options ----
+function pills(id,items,key,after){
+  items.forEach(it=>{
+    const val=Array.isArray(it)?it[0]:it,b=document.createElement("button");
+    b.type="button";b.className="size";b.textContent=val;b.setAttribute("aria-pressed",val===state[key]);
+    b.onclick=()=>{state[key]=val;[...$(id).children].forEach(c=>c.setAttribute("aria-pressed",c===b));after&&after();renderAll();};
+    $(id).appendChild(b);
+  });
+}
+const swatches=[];
+COLORS.forEach(([name,hex])=>{
+  const b=document.createElement("button");b.type="button";b.className="sw";b.style.background=hex;b.title=name;b.setAttribute("aria-label",name);b.setAttribute("aria-pressed","false");
+  b.onclick=()=>setColor([name,hex]);swatches.push([b,hex]);$("colors").appendChild(b);
+});
+function setColor(c){
+  state.color=c;
+  swatches.forEach(([b,h])=>b.setAttribute("aria-pressed",h===c[1]));
+  $("colorName").textContent="Colour: "+c[0];
+  renderAll();
+}
+$("customColor").oninput=e=>setColor(["Custom "+e.target.value,e.target.value]);
+const cSw=[];
+function setCollarColor(c){
+  state.collarColor=c;
+  cMatch.setAttribute("aria-pressed",!c);
+  cSw.forEach(([b,h])=>b.setAttribute("aria-pressed",!!c&&h===c[1]));
+  $("collarName").textContent="Collar colour: "+(c?c[0]:"matches the shirt");
+  renderAll();
+}
+const cMatch=document.createElement("button");cMatch.type="button";cMatch.className="size";cMatch.textContent="Match shirt";cMatch.setAttribute("aria-pressed","true");
+cMatch.onclick=()=>setCollarColor(null);$("collarColors").appendChild(cMatch);
+COLORS.forEach(([name,hex])=>{
+  const b=document.createElement("button");b.type="button";b.className="sw";b.style.background=hex;b.title=name;b.setAttribute("aria-label",name+" collar");b.setAttribute("aria-pressed","false");
+  b.onclick=()=>setCollarColor([name,hex]);cSw.push([b,hex]);$("collarColors").appendChild(b);
+});
+$("collarCustom").oninput=e=>setCollarColor(["Custom "+e.target.value,e.target.value]);
+$("collarName").textContent="Collar colour: matches the shirt";
+pills("collarMode",COLLARS,"collar",()=>{$("collarBox").style.display=state.collar==="With collar"?"block":"none";});
+pills("buttonMode",BUTTONS,"buttons");
+const rSw=[];
+function setRibbonColor(c){
+  state.ribbonColor=c;
+  rSw.forEach(([b,h])=>b.setAttribute("aria-pressed",h===c[1]));
+  $("ribbonName").textContent="Ribbon colour: "+c[0];
+  renderAll();
+}
+COLORS.forEach(([name,hex])=>{
+  const b=document.createElement("button");b.type="button";b.className="sw";b.style.background=hex;b.title=name;b.setAttribute("aria-label",name+" ribbon");b.setAttribute("aria-pressed","false");
+  b.onclick=()=>setRibbonColor([name,hex]);rSw.push([b,hex]);$("ribbonColors").appendChild(b);
+});
+$("ribbonCustom").oninput=e=>setRibbonColor(["Custom "+e.target.value,e.target.value]);
+state.ribbonColor=COLORS[1];
+pills("ribbonMode",RIBBONS,"ribbon",()=>{$("ribbonBox").style.display=state.ribbon==="With ribbon"?"block":"none";});
+pills("sleeves",SLEEVES,"sleeve");
+pills("fabrics",FABRICS,"fabric",()=>{$("fabNote").textContent=FABRICS.find(f=>f[0]===state.fabric)[1];});
+$("fabNote").textContent=FABRICS[0][1];
+function buildSizes(){
+  $("sizes").innerHTML="";
+  if(!SIZES[state.fit].includes(state.size))state.size=null;
+  pills("sizes",SIZES[state.fit],"size");
+}
+pills("fits",FITS,"fit",buildSizes);
+buildSizes();
+$("qty").oninput=renderAll;
+
+// ---- Sample logos ----
+$("sample").onclick=()=>{
+  const svgs=[
+    ['<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><circle cx="100" cy="100" r="92" fill="#fff" stroke="#e74c3c" stroke-width="10"/><text x="100" y="118" font-family="Arial,sans-serif" font-size="50" font-weight="700" text-anchor="middle" fill="#e74c3c">LOGO</text></svg>',"sample-badge.svg"],
+    ['<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><polygon points="100,10 123,72 190,76 138,118 156,184 100,148 44,184 62,118 10,76 77,72" fill="#f39c12"/></svg>',"sample-star.svg"],
+    ['<svg xmlns="http://www.w3.org/2000/svg" width="300" height="90"><rect width="300" height="90" rx="14" fill="#16a085"/><text x="150" y="60" font-family="Arial,sans-serif" font-size="42" font-weight="700" text-anchor="middle" fill="#fff">BRAND</text></svg>',"sample-brand.svg"]
+  ];
+  addLogos(svgs.map(([t,n])=>new File([t],n,{type:"image/svg+xml"})));
+};
+
+// ---- Downloads ----
+const save=(cv,name)=>cv.toBlob(b=>{const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;a.click();});
+$("dlFront").onclick=()=>save($("cvFront"),"shirt-front.png");
+$("dlBack").onclick=()=>save($("cvBack"),"shirt-back.png");
+$("dlBoth").onclick=()=>{
+  const f=$("cvFront"),b=$("cvBack"),c=document.createElement("canvas");c.width=f.width+b.width;c.height=Math.max(f.height,b.height);
+  const x=c.getContext("2d");x.drawImage(f,0,0);x.drawImage(b,f.width,0);save(c,"shirt-front-back.png");
+};
+
+// ---- Order ----
+$("submit").onclick=async()=>{
+  const data=new FormData();
+  data.append("fit",state.fit);data.append("size",state.size);data.append("sleeve",state.sleeve);data.append("fabric",state.fabric);data.append("collar",state.collar);data.append("sleeve_ribbon",state.ribbon==="With ribbon"?state.ribbonColor[0]+" "+state.ribbonColor[1]:"none");data.append("buttons",state.collar==="With collar"?state.buttons:"none");data.append("collar_colour",state.collar==="With collar"?(state.collarColor?state.collarColor[0]+" "+state.collarColor[1]:"matches shirt"):"none");data.append("color",state.color[0]);data.append("color_hex",state.color[1]);
+  data.append("quantity",$("qty").value);data.append("name",$("name").value);data.append("email",$("email").value);
+  const lines=[];
+  for(const side of ["front","back"]){
+    const S=state.sides[side];
+    if(S.baseFile)data.append(side+"_shirt_image",S.baseFile);
+    S.logos.forEach((l,i)=>{
+      data.append(`${side}_logo_${i+1}`,l.file);
+      data.append(`${side}_logo_${i+1}_placement`,JSON.stringify({x:l.x,y:l.y,width:l.w,rotation:l.rot,background_removed:l.bg}));
+    });
+    lines.push(`${side[0].toUpperCase()+side.slice(1)}: ${S.logos.length} logo${S.logos.length===1?"":"s"}${S.baseFile?" on your shirt image":""}`);
+  }
+  for(const [k,id] of [["front","cvFront"],["back","cvBack"]]){
+    const b=await new Promise(r=>$(id).toBlob(r));if(b)data.append(k+"_preview",b,k+"-preview.png");
+  }
+  const sum=`For: ${state.fit}\nType: ${state.sleeve}\nFabric: ${state.fabric}\nCollar: ${state.collar==="With collar"?"Yes, "+(state.collarColor?state.collarColor[0]:"matches shirt"):"No"}\n${state.collar==="With collar"?"Buttons: "+(state.buttons==="With buttons"?"Yes":"No")+"\n":""}Sleeve ribbon: ${state.ribbon==="With ribbon"?state.ribbonColor[0]:"No"}\nColour: ${state.color[0]}\nSize: ${state.size}\nQuantity: ${$("qty").value}\n`+lines.join("\n");
+  if(ORDER_ENDPOINT){
+    $("submit").disabled=true;
+    try{const r=await fetch(ORDER_ENDPOINT,{method:"POST",body:data});if(!r.ok)throw 0;$("summary").textContent="Added to your order.\n"+sum;}
+    catch{$("summary").textContent="Could not send your order. Check your connection and try again.";}
+    renderAll();
+  }else{
+    $("summary").textContent="Order ready (set ORDER_ENDPOINT to send it to your server).\n"+sum;
+    console.log([...data.entries()]);
+  }
+};
+
+setColor(WHITE);setRibbonColor(COLORS[1]);syncBase();refresh();
+</script>
+</body>
+</html>
