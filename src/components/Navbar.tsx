@@ -10,6 +10,7 @@ const links = [
   { href: "/how-it-works", label: "How It Works" },
   { href: "/fabrics", label: "Fabrics" },
   { href: "/design-your-shirt.html", label: "Design your Shirt" },
+    { href: "/og-shirts-order-form.html", label: "Shirts Order Form" },
   { href: "/about", label: "About" },
 ];
 
