@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Custom Order | OG Shirts</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+  :root{
+    --ink:#0f1b2d; --muted:#5b6678; --line:#dfe3ea; --bg:#f4f6f9;
+    --card:#ffffff; --accent:#e4572e; --accent-dark:#c2421d; --ok:#1f9d55; --err:#d64545;
+    --radius:12px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.45}
+  header{background:var(--ink);color:#fff;padding:28px 20px 60px}
+  header .wrap{max-width:860px;margin:0 auto}
+  header .brand{font-weight:800;letter-spacing:.08em;font-size:14px;color:#ffb199;text-transform:uppercase}
+  header h1{margin:6px 0 4px;font-size:30px}
+  header p{margin:0;color:#c8d0dc}
+  main{max-width:860px;margin:-40px auto 60px;padding:0 16px}
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:0 2px 10px rgba(15,27,45,.06);padding:24px;margin-bottom:18px}
+  .card h2{margin:0 0 4px;font-size:18px;display:flex;align-items:center;gap:10px}
+  .card h2 .num{background:var(--accent);color:#fff;border-radius:50%;width:26px;height:26px;display:inline-grid;place-items:center;font-size:13px}
+  .card .hint{color:var(--muted);font-size:14px;margin:0 0 16px}
+  label{font-weight:600;font-size:14px;display:block;margin-bottom:6px}
+  .req::after{content:" *";color:var(--accent)}
+  .opt{font-weight:400;color:var(--muted);font-size:13px}
+  input[type=text],input[type=email],input[type=tel],input[type=number],select,textarea{
+    width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff;color:var(--ink)}
+  input:focus,select:focus,textarea:focus{outline:2px solid #ffcfbf;border-color:var(--accent)}
+  textarea{min-height:120px;resize:vertical}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media(max-width:640px){.grid2,.grid3{grid-template-columns:1fr}}
+
+  /* Order type tiles */
+  .tiles{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+  @media(max-width:820px){.tiles{grid-template-columns:repeat(3,1fr)}}
+  @media(max-width:520px){.tiles{grid-template-columns:repeat(2,1fr)}}
+  .tile input{position:absolute;opacity:0;pointer-events:none}
+  .tile span{display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 8px;border:2px solid var(--line);border-radius:10px;cursor:pointer;text-align:center;font-weight:600;font-size:14px;transition:.15s}
+  .tile span b{font-size:26px;font-weight:400}
+  .tile input:checked + span{border-color:var(--accent);background:#fff4f0;color:var(--accent-dark)}
+  .tile input:focus-visible + span{outline:2px solid var(--accent)}
+
+  /* Sizes */
+  .size-group{margin-bottom:16px}
+  .size-group h3{margin:0 0 8px;font-size:15px;display:flex;justify-content:space-between;align-items:baseline}
+  .size-group h3 small{font-weight:600;color:var(--muted);font-size:13px}
+  .sizes{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+  @media(max-width:640px){.sizes{grid-template-columns:repeat(3,1fr)}}
+  .size{border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center}
+  .size label{font-size:16px;margin-bottom:6px}
+  .size input{text-align:center}
+  .size .age{display:block;font-size:12px;color:var(--muted);font-weight:400;margin:-4px 0 6px}
+  .total{margin-top:12px;font-weight:700;text-align:right}
+  .total span{color:var(--accent)}
+
+  /* Fabric */
+  .fabrics{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:640px){.fabrics{grid-template-columns:1fr}}
+  .fabric input{position:absolute;opacity:0;pointer-events:none}
+  .fabric span{display:block;border:2px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;height:100%}
+  .fabric span strong{display:block;font-size:15px}
+  .fabric span small{color:var(--muted);font-size:13px}
+  .fabric input:checked + span{border-color:var(--accent);background:#fff4f0}
+  .fabric input:focus-visible + span{outline:2px solid var(--accent)}
+  .fabric.recommended span strong::after{content:"Recommended";margin-left:8px;font-size:11px;font-weight:700;color:var(--ok);background:#e6f6ec;padding:2px 6px;border-radius:20px;vertical-align:middle}
+
+  /* Uploads */
+  .drop{border:2px dashed var(--line);border-radius:10px;padding:18px;text-align:center;cursor:pointer;color:var(--muted);transition:.15s;display:block;font-weight:400}
+  .drop:hover,.drop.drag{border-color:var(--accent);background:#fff8f5}
+  .drop input{display:none}
+  .drop strong{color:var(--accent)}
+  .previews{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+  .prev{position:relative;width:110px;border:1px solid var(--line);border-radius:8px;padding:6px;background:#fafbfc;font-size:11px;word-break:break-all}
+  .prev img{width:100%;height:80px;object-fit:contain;display:block;margin-bottom:4px}
+  .prev button{position:absolute;top:-8px;right:-8px;width:22px;height:22px;border-radius:50%;border:none;background:var(--err);color:#fff;cursor:pointer;font-size:13px;line-height:22px;padding:0}
+
+  /* Players */
+  .players{width:100%;border-collapse:collapse}
+  .players th{font-size:13px;text-align:left;color:var(--muted);font-weight:600;padding:0 6px 6px}
+  .players td{padding:4px 6px}
+  .players td.idx{width:34px;color:var(--muted);font-weight:600;text-align:center}
+  .players td.sz{width:190px}
+  .players td.no{width:110px}
+  .players td.rm{width:36px}
+  .players input.dup{border-color:var(--err);background:#fff5f5}
+  .rm-btn{border:none;background:none;color:var(--err);font-size:20px;cursor:pointer;line-height:1}
+  .player-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
+  .btn-small{border:1px solid var(--ink);background:#fff;border-radius:8px;padding:8px 14px;font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+  .btn-small:hover{background:var(--ink);color:#fff}
+  .btn-small:disabled{opacity:.4;cursor:not-allowed;background:#fff;color:var(--ink)}
+  .players tr.bad input,.players tr.bad select{border-color:var(--err)}
+  /* Size dropdown: custom arrow + tight padding so the chosen size is always readable */
+  .players select.p-size{
+    -webkit-appearance:none;appearance:none;width:100%;min-width:76px;height:42px;
+    padding:0 26px 0 10px;font-size:15px;font-weight:600;color:var(--ink);line-height:42px;
+    background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235b6678'/%3E%3C/svg%3E") no-repeat right 10px center;
+    text-overflow:clip;cursor:pointer}
+  .players select.p-size.empty{color:var(--muted);font-weight:400}
+  .players select.p-size option{color:var(--ink);font-weight:400}
+  #playerError.show{display:block}
+  .player-note{font-size:13px;color:var(--muted)}
+  .player-note.warn{color:#b26a00}
+  @media(max-width:560px){
+    .players thead{display:none}
+    .players tr{display:grid;grid-template-columns:26px 1fr 90px 28px;grid-template-areas:"idx name name rm" ". size num .";gap:6px;padding:8px 0;border-bottom:1px solid var(--line)}
+    .players td{display:block;padding:0;width:auto !important}
+    .players td.idx{grid-area:idx;align-self:center}
+    .players td:nth-child(2){grid-area:name}
+    .players td.sz{grid-area:size}
+    .players td.no{grid-area:num}
+    .players td.rm{grid-area:rm;align-self:center}
+  }
+
+  .pos-box{margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
+  .error-msg{color:var(--err);font-size:13px;margin-top:6px;display:none}
+  .invalid .error-msg{display:block}
+  .invalid input,.invalid select,.invalid .tiles span,.invalid .fabrics span,.invalid .sizes .size{border-color:var(--err)}
+
+  .actions{display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-end;align-items:center}
+  .draft-status{margin-right:auto;font-size:13px;color:var(--ok)}
+  .draft-status.warn{color:#b26a00}
+  .btn{border:none;border-radius:10px;padding:14px 22px;font:inherit;font-weight:700;cursor:pointer}
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-primary:hover{background:var(--accent-dark)}
+  .btn-secondary{background:#fff;color:var(--ink);border:2px solid var(--ink)}
+  .btn-secondary:hover{background:var(--ink);color:#fff}
+  .btn:disabled{opacity:.6;cursor:wait}
+
+  .success{display:none;border-left:5px solid var(--ok)}
+  .send-error{display:none;border-left:5px solid var(--err)}
+  .send-error.show{display:block}
+  .send-error h2{color:var(--err)}
+  .send-error .msg{margin:0 0 8px}
+  .success.show{display:block}
+  .success h2{color:var(--ok)}
+  .summary{width:100%;border-collapse:collapse;margin:12px 0 16px;font-size:14px}
+  .summary td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+  .summary td:first-child{color:var(--muted);width:38%}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="brand">OG Shirts</div>
+    <h1>Custom Team &amp; Company Shirt Order</h1>
+    <p>Tell us what you need. We'll review your order and get back to you with a quote and proof.</p>
+  </div>
+</header>
+
+<main>
+<!-- Not a <form>: nothing on this page can trigger a page reload -->
+<div id="orderForm">
+
+  <!-- 1. Order type -->
+  <section class="card" id="sec-type">
+    <h2><span class="num">1</span>Order type <span class="req"></span></h2>
+    <p class="hint">Select the kind of shirt you're ordering.</p>
+    <div class="tiles">
+      <label class="tile"><input type="radio" name="orderType" value="Cricket Jersey"><span><b>🏏</b>Cricket Jersey</span></label>
+      <label class="tile"><input type="radio" name="orderType" value="Rugby"><span><b>🏉</b>Rugby</span></label>
+      <label class="tile"><input type="radio" name="orderType" value="Company Shirts"><span><b>👔</b>Company Shirts</span></label>
+      <label class="tile"><input type="radio" name="orderType" value="Basketball Shirt"><span><b>🏀</b>Basketball Shirt</span></label>
+      <label class="tile"><input type="radio" name="orderType" value="Soccer"><span><b>⚽</b>Soccer</span></label>
+      <label class="tile"><input type="radio" name="orderType" value="School Shirts"><span><b>🎒</b>School Shirts</span></label>
+    </div>
+    <div class="error-msg">Please select an order type.</div>
+  </section>
+
+  <!-- 2. Team / contact -->
+  <section class="card">
+    <h2><span class="num">2</span>Team / company &amp; contact</h2>
+    <p class="hint">So we know who the order is for and how to reach you.</p>
+    <div class="field" id="f-team" style="margin-bottom:14px">
+      <label for="teamName" class="req">Team / Company name</label>
+      <input type="text" id="teamName" name="teamName" placeholder="e.g. Phoenix Strikers CC">
+      <div class="error-msg">Please enter your team or company name.</div>
+    </div>
+    <div class="grid3">
+      <div class="field" id="f-contact">
+        <label for="contactName" class="req">Contact name</label>
+        <input type="text" id="contactName" name="contactName">
+        <div class="error-msg">Please enter a contact name.</div>
+      </div>
+      <div class="field" id="f-email">
+        <label for="email" class="req">Email</label>
+        <input type="email" id="email" name="email">
+        <div class="error-msg">Please enter a valid email.</div>
+      </div>
+      <div class="field">
+        <label for="phone">Phone <span class="opt">(optional)</span></label>
+        <input type="tel" id="phone" name="phone">
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. Sizes -->
+  <section class="card" id="sec-sizes">
+    <h2><span class="num">3</span>Sizes &amp; quantity <span class="req"></span></h2>
+    <p class="hint">Enter how many shirts you need in each size for Male, Female and Kids. Leave a size blank if you don't need it. Kids sizes show the matching age range.</p>
+    <div id="sizeGroups"></div>
+    <div class="total">Total shirts: <span id="totalQty">0</span></div>
+    <div class="error-msg">Please enter a quantity for at least one size.</div>
+  </section>
+
+  <!-- 4. Players -->
+  <section class="card" id="sec-players">
+    <h2><span class="num">4</span>Player details <span class="opt">(optional)</span></h2>
+    <p class="hint">Add a name, size and number for each player (up to 30). Leave this blank if you don't need names or numbers printed.</p>
+    <table class="players">
+      <thead><tr><th>#</th><th>Player name</th><th>Size</th><th>Number</th><th></th></tr></thead>
+      <tbody id="playerRows"></tbody>
+    </table>
+    <div class="player-bar">
+      <div>
+        <button type="button" class="btn-small" id="addPlayerBtn">+ Add player</button>
+        <button type="button" class="btn-small" id="syncSizesBtn" title="Set the size quantities in step 3 from this player list">Use player sizes for quantities</button>
+      </div>
+      <span class="player-note" id="playerNote"></span>
+    </div>
+    <div class="error-msg" id="playerError">Each player needs a size. Please also give each player a name or a number.</div>
+  </section>
+
+  <!-- 5. Fabric -->
+  <section class="card" id="sec-fabric">
+    <h2><span class="num">5</span>Fabric <span class="req"></span></h2>
+    <p class="hint">Not sure? Pick "Not sure – please recommend" and we'll suggest the best fit for your sport.</p>
+    <div class="fabrics" id="fabricList"></div>
+    <div class="error-msg">Please choose a fabric option.</div>
+  </section>
+
+  <!-- 5. Artwork -->
+  <section class="card">
+    <h2><span class="num">6</span>Logos &amp; design</h2>
+    <p class="hint">Upload PNG, JPG, SVG, GIF or WEBP files (max 10 MB each). High-resolution files with transparent backgrounds work best.</p>
+
+    <div style="margin-bottom:18px">
+      <label>Logo – Front <span class="opt">(optional)</span></label>
+      <label class="drop" data-target="front">
+        <input type="file" accept="image/*" id="logoFront">
+        <strong>Click to upload</strong> or drag &amp; drop the front logo
+      </label>
+      <div class="previews" id="prev-front"></div>
+    </div>
+
+    <div style="margin-bottom:18px">
+      <label>Logo – Back <span class="opt">(optional)</span></label>
+      <label class="drop" data-target="back">
+        <input type="file" accept="image/*" id="logoBack">
+        <strong>Click to upload</strong> or drag &amp; drop the back logo
+      </label>
+      <div class="previews" id="prev-back"></div>
+    </div>
+
+    <div>
+      <label>Shirt design, if you have one <span class="opt">(optional – you can add several)</span></label>
+      <label class="drop" data-target="design">
+        <input type="file" accept="image/*" id="designFiles" multiple>
+        <strong>Click to upload</strong> or drag &amp; drop design mockups
+      </label>
+      <div class="previews" id="prev-design"></div>
+    </div>
+
+    <div class="pos-box">
+      <label>Shirt design with logo position <span class="opt">(optional – you can add several)</span></label>
+      <p class="hint" style="margin:0 0 10px">Upload a sketch or mockup showing where each logo should go, and/or pick the positions below.</p>
+      <label class="drop" data-target="position">
+        <input type="file" accept="image/*" id="positionFiles" multiple>
+        <strong>Click to upload</strong> or drag &amp; drop your logo-position design
+      </label>
+      <div class="previews" id="prev-position"></div>
+      <div class="grid2" style="margin-top:14px">
+        <div>
+          <label for="frontPos">Front logo position</label>
+          <select id="frontPos">
+            <option value="">— Select —</option>
+            <option>Left chest</option><option>Right chest</option><option>Center chest</option>
+            <option>Full front</option><option>Left sleeve</option><option>Right sleeve</option>
+            <option>As shown in my design</option><option>Not sure – please suggest</option>
+          </select>
+        </div>
+        <div>
+          <label for="backPos">Back logo position</label>
+          <select id="backPos">
+            <option value="">— Select —</option>
+            <option>Upper back (below collar)</option><option>Center back</option><option>Full back</option>
+            <option>Lower back</option><option>Back of neck</option>
+            <option>As shown in my design</option><option>Not sure – please suggest</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:14px">
+        <label for="posNotes">Logo size / placement notes <span class="opt">(optional)</span></label>
+        <input type="text" id="posNotes" maxlength="200" placeholder="e.g. Front logo 3.5 in wide, sponsor logo on right sleeve">
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. Extra details -->
+  <section class="card">
+    <h2><span class="num">7</span>Extra details</h2>
+    <p class="hint">Colors, sponsor logos, collar style, sleeve length, deadline… anything that helps.</p>
+    <textarea id="extraDetails" name="extraDetails" placeholder="e.g. Navy and gold colors, V-neck collar, names on back above numbers, need by March 15."></textarea>
+  </section>
+
+  <div class="actions">
+    <span class="draft-status" id="draftStatus"></span>
+    <button type="button" class="btn-small" id="clearBtn">Clear form</button>
+    <button type="button" class="btn btn-primary" id="downloadBtn">⬇ Download order (Excel)</button>
+  </div>
+</div>
+
+<!-- Success -->
+<section class="card success" id="successBox" aria-live="polite">
+  <h2>✓ Order submitted</h2>
+  <p class="hint">Thank you! Your order <strong id="orderIdOut"></strong> has been emailed to OG Shirts (<span id="emailedTo"></span>) with the Excel order file attached. We'll reply to the email address you gave us. You can download your own copy below.</p>
+  <table class="summary" id="summaryTable"></table>
+  <div class="actions">
+    <button type="button" class="btn btn-secondary" id="newOrderBtn">Start a new order</button>
+    <button type="button" class="btn btn-primary" id="downloadBtn2">⬇ Download order (Excel)</button>
+  </div>
+</section>
+</main>
+
+<script>
+(function(){
+  "use strict";
+
+  const SIZE_GROUPS = [
+    { key:"M", label:"Male",   sizes:[{s:"S"},{s:"M"},{s:"L"},{s:"XL"},{s:"XXL"}] },
+    { key:"F", label:"Female", sizes:[{s:"S"},{s:"M"},{s:"L"},{s:"XL"},{s:"XXL"}] },
+    { key:"K", label:"Kids",   sizes:[{s:"XS",age:"3–4 yrs"},{s:"S",age:"5–6 yrs"},{s:"M",age:"7–8 yrs"},
+                                      {s:"L",age:"9–10 yrs"},{s:"XL",age:"11–12 yrs"},{s:"XXL",age:"13–14 yrs"}] }
+  ];
+  // Flat list of size codes, e.g. "M-S", "F-XL", "K-M"
+  const SIZE_INFO = {};
+  SIZE_GROUPS.forEach(g => g.sizes.forEach(z => {
+    const code = g.key + "-" + z.s;
+    SIZE_INFO[code] = { code, group:g.label, size:z.s, age:z.age || "",
+      label: g.label + " " + z.s + (z.age ? " (" + z.age + ")" : "") };
+  }));
+  const SIZES = Object.keys(SIZE_INFO);
+  const sizeLabel = c => SIZE_INFO[c] ? SIZE_INFO[c].label : c;
+
+  // Build the size/quantity inputs
+  (function buildSizeInputs(){
+    const box = document.getElementById("sizeGroups");
+    SIZE_GROUPS.forEach(g => {
+      const wrap = document.createElement("div");
+      wrap.className = "size-group";
+      wrap.innerHTML = '<h3>' + g.label + ' <small>Subtotal: <span id="sub-' + g.key + '">0</span></small></h3><div class="sizes"></div>';
+      const grid = wrap.querySelector(".sizes");
+      g.sizes.forEach(z => {
+        const code = g.key + "-" + z.s;
+        const d = document.createElement("div");
+        d.className = "size";
+        d.innerHTML = '<label for="qty-' + code + '">' + z.s + '</label>' +
+          (z.age ? '<span class="age">' + z.age + '</span>' : '') +
+          '<input type="number" min="0" step="1" id="qty-' + code + '" data-size="' + code + '" placeholder="0" aria-label="' + g.label + ' ' + z.s + ' quantity">';
+        grid.appendChild(d);
+      });
+      box.appendChild(wrap);
+    });
+  })();
+  const MAX_BYTES = 10 * 1024 * 1024;
+
+  // ---- Email settings ----
+  // Address of the server function that emails the order (see api/send-order.js).
+  // Leave as "/api/send-order" when this page is on the same Vercel site.
+  const SEND_ORDER_URL = "/api/send-order";
+  const ORDER_EMAIL = "ogshirtsmail@gmail.com";
+  const MAX_EMAIL_BYTES = 3 * 1024 * 1024; // keeps the upload under Vercel's 4.5 MB request limit
+  const MAX_IMAGE_SIDE = 1600;             // large photos are scaled down to keep the email small
+
+  const FABRICS = [
+    {name:"Dri-Fit Polyester (Moisture-Wicking)", desc:"Lightweight, quick-dry, breathable. Great all-rounder for most sports.", rec:true},
+    {name:"Sublimation Polyester", desc:"100% poly made for full-color all-over prints that never fade or crack."},
+    {name:"Micro Mesh", desc:"Fine mesh, very breathable. Popular for soccer and cricket."},
+    {name:"Honeycomb / Birdseye Mesh", desc:"Textured mesh with extra airflow for hot conditions."},
+    {name:"Interlock Polyester", desc:"Smooth, heavier double-knit with a premium feel and good stretch."},
+    {name:"Dazzle", desc:"Shiny, slightly heavier poly with a classic basketball look."},
+    {name:"Tackle Twill / Heavy-Weight Poly", desc:"Very durable and tear-resistant. Built for rugby contact."},
+    {name:"Rugby Knit (Cotton/Poly)", desc:"Traditional heavy-weight rugby jersey fabric."},
+    {name:"Spandex / Lycra Blend", desc:"Stretchy, close-fitting performance fabric."},
+    {name:"100% Cotton", desc:"Soft and comfortable. Best for casual or company tees."},
+    {name:"Cotton-Poly Blend (50/50 or 60/40)", desc:"Soft like cotton, less shrinkage and wrinkles."},
+    {name:"Tri-Blend", desc:"Cotton/poly/rayon. Ultra-soft, vintage feel."},
+    {name:"Pique (Polo Knit)", desc:"Textured knit used for polo-style company shirts."},
+    {name:"Bamboo Blend", desc:"Eco-friendly, very soft, naturally moisture-wicking."},
+    {name:"Not sure – please recommend", desc:"We'll suggest the best fabric for your sport and budget."}
+  ];
+
+  // Uploaded files: { front: [], back: [], design: [] } with {name, type, size, dataUrl, width, height}
+  const uploads = { front: [], back: [], design: [], position: [] };
+  let currentOrderId = null;
+
+  // ---------- Build fabric options ----------
+  const fabricList = document.getElementById("fabricList");
+  FABRICS.forEach((f, i) => {
+    const lab = document.createElement("label");
+    lab.className = "fabric" + (f.rec ? " recommended" : "");
+    lab.innerHTML = '<input type="radio" name="fabric" value=""><span><strong></strong><small></small></span>';
+    lab.querySelector("input").value = f.name;
+    lab.querySelector("strong").textContent = f.name;
+    lab.querySelector("small").textContent = f.desc;
+    fabricList.appendChild(lab);
+  });
+
+  // ---------- Size totals ----------
+  const qtyInputs = SIZES.map(s => document.getElementById("qty-" + s));
+  function getQuantities(){
+    const q = {};
+    qtyInputs.forEach(inp => {
+      const n = parseInt(inp.value, 10);
+      q[inp.dataset.size] = (isNaN(n) || n < 0) ? 0 : n;
+    });
+    return q;
+  }
+  function updateTotal(){
+    const q = getQuantities();
+    document.getElementById("totalQty").textContent = SIZES.reduce((a,s)=>a+q[s],0);
+    SIZE_GROUPS.forEach(g => {
+      document.getElementById("sub-" + g.key).textContent = SIZES.filter(c => c.startsWith(g.key + "-")).reduce((a,c)=>a+q[c],0);
+    });
+    updatePlayerNote();
+  }
+
+  // ---------- Players ----------
+  const MAX_PLAYERS = 30, START_ROWS = 3;
+  const playerBody = document.getElementById("playerRows");
+  const addPlayerBtn = document.getElementById("addPlayerBtn");
+
+  function renumberPlayers(){
+    Array.from(playerBody.rows).forEach((tr, i) => { tr.querySelector(".idx").textContent = i + 1; });
+    addPlayerBtn.disabled = playerBody.rows.length >= MAX_PLAYERS;
+    addPlayerBtn.textContent = addPlayerBtn.disabled ? "Maximum 30 players" : "+ Add player";
+  }
+
+  function addPlayerRow(focus, data){
+    if (playerBody.rows.length >= MAX_PLAYERS) return;
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      '<td class="idx"></td>' +
+      '<td><input type="text" class="p-name" maxlength="30" placeholder="Name on shirt" aria-label="Player name"></td>' +
+      '<td class="sz"><select class="p-size" aria-label="Player size"><option value="">Size</option>' +
+        SIZE_GROUPS.map(g => '<optgroup label="' + g.label + '">' + g.sizes.map(z =>
+          '<option value="' + g.key + '-' + z.s + '">' + g.label + ' ' + z.s + (z.age ? ' (' + z.age.replace(' yrs','y') + ')' : '') + '</option>').join("") + '</optgroup>').join("") +
+        '</select></td>' +
+      '<td class="no"><input type="text" class="p-num" maxlength="3" inputmode="numeric" placeholder="No." aria-label="Player number"></td>' +
+      '<td class="rm"><button type="button" class="rm-btn" title="Remove player" aria-label="Remove player">×</button></td>';
+    if (data){
+      tr.querySelector(".p-name").value = data.name || "";
+      tr.querySelector(".p-size").value = SIZE_INFO[data.size] ? data.size : "";
+      tr.querySelector(".p-num").value = data.number || "";
+    }
+    const sizeSel = tr.querySelector(".p-size");
+    const markSize = () => sizeSel.classList.toggle("empty", !sizeSel.value);
+    sizeSel.addEventListener("change", markSize);
+    markSize();
+    tr.querySelector(".p-num").addEventListener("input", e => { e.target.value = e.target.value.replace(/\D/g, ""); });
+    tr.querySelector(".rm-btn").addEventListener("click", () => {
+      tr.remove();
+      if (!playerBody.rows.length) addPlayerRow(false);
+      renumberPlayers(); updatePlayerNote(); saveDraft();
+    });
+    tr.addEventListener("input", () => { tr.classList.remove("bad"); updatePlayerNote(); });
+    tr.addEventListener("change", () => { tr.classList.remove("bad"); updatePlayerNote(); });
+    playerBody.appendChild(tr);
+    renumberPlayers();
+    if (focus) tr.querySelector(".p-name").focus();
+  }
+
+  function resetPlayers(){
+    playerBody.innerHTML = "";
+    for (let i = 0; i < START_ROWS; i++) addPlayerRow(false);
+    document.getElementById("playerError").classList.remove("show");
+    updatePlayerNote();
+  }
+
+  // Returns filled-in rows only
+  function getPlayers(){
+    return Array.from(playerBody.rows).map(tr => ({
+      tr,
+      name: tr.querySelector(".p-name").value.trim(),
+      size: tr.querySelector(".p-size").value,
+      number: tr.querySelector(".p-num").value.trim()
+    })).filter(p => p.name || p.size || p.number);
+  }
+
+  function updatePlayerNote(){
+    const players = getPlayers();
+    // flag duplicate numbers
+    const counts = {};
+    players.forEach(p => { if (p.number) counts[p.number] = (counts[p.number] || 0) + 1; });
+    Array.from(playerBody.rows).forEach(tr => {
+      const n = tr.querySelector(".p-num");
+      n.classList.toggle("dup", !!n.value && counts[n.value.trim()] > 1);
+    });
+    const dups = Object.keys(counts).filter(k => counts[k] > 1);
+
+    const note = document.getElementById("playerNote");
+    if (!players.length){ note.textContent = "No players added yet."; note.className = "player-note"; return; }
+    const msgs = [players.length + " of " + MAX_PLAYERS + " players"];
+    let warn = false;
+    const total = parseInt(document.getElementById("totalQty").textContent, 10) || 0;
+    const sized = players.filter(p => p.size).length;
+    if (sized && total && sized !== total){ msgs.push(sized + " player sizes vs " + total + " shirts in step 3"); warn = true; }
+    if (dups.length){ msgs.push("duplicate number" + (dups.length > 1 ? "s" : "") + ": " + dups.join(", ")); warn = true; }
+    note.textContent = msgs.join(" · ");
+    note.className = "player-note" + (warn ? " warn" : "");
+  }
+
+  addPlayerBtn.addEventListener("click", () => addPlayerRow(true));
+  document.getElementById("syncSizesBtn").addEventListener("click", () => {
+    const players = getPlayers().filter(p => p.size);
+    if (!players.length){ alert("Choose a size for at least one player first."); return; }
+    const c = {}; SIZES.forEach(s => c[s] = 0);
+    players.forEach(p => c[p.size]++);
+    qtyInputs.forEach(inp => { inp.value = c[inp.dataset.size] || ""; });
+    document.getElementById("sec-sizes").classList.remove("invalid");
+    updateTotal();
+  });
+  resetPlayers();
+  qtyInputs.forEach(inp => inp.addEventListener("input", () => {
+    if (inp.value.includes(".") || inp.value.includes("-")) inp.value = Math.max(0, Math.floor(Math.abs(parseFloat(inp.value)||0)));
+    updateTotal();
+  }));
+
+  // ---------- Uploads ----------
+  function readAsDataURL(file){
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result);
+      r.onerror = () => rej(r.error);
+      r.readAsDataURL(file);
+    });
+  }
+  function loadImage(src){
+    return new Promise((res, rej) => {
+      const img = new Image();
+      img.onload = () => res(img);
+      img.onerror = () => rej(new Error("Could not read image"));
+      img.src = src;
+    });
+  }
+  // Excel only accepts PNG/JPEG/GIF — convert anything else (SVG, WEBP, etc.) to PNG.
+  async function processFile(file){
+    if (!file.type.startsWith("image/")) throw new Error(file.name + " is not an image file.");
+    if (file.size > MAX_BYTES) throw new Error(file.name + " is larger than 10 MB.");
+    let dataUrl = await readAsDataURL(file);
+    const img = await loadImage(dataUrl);
+    let w = img.naturalWidth || 800, h = img.naturalHeight || 800;
+    const native = ["image/png","image/jpeg","image/gif"].includes(file.type);
+    if (native && file.type !== "image/gif" && Math.max(w, h) > MAX_IMAGE_SIDE){
+      // Scale big photos down (keeps transparency for PNG logos)
+      const scale = MAX_IMAGE_SIDE / Math.max(w, h);
+      const cw = Math.round(w * scale), ch = Math.round(h * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = cw; canvas.height = ch;
+      canvas.getContext("2d").drawImage(img, 0, 0, cw, ch);
+      dataUrl = file.type === "image/jpeg" ? canvas.toDataURL("image/jpeg", 0.9) : canvas.toDataURL("image/png");
+      w = cw; h = ch;
+    } else if (!native){
+      // SVGs may report no size; scale to a sensible resolution
+      const scale = Math.max(1, 1200 / Math.max(w, h));
+      const cw = Math.round(w * scale), ch = Math.round(h * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = cw; canvas.height = ch;
+      canvas.getContext("2d").drawImage(img, 0, 0, cw, ch);
+      dataUrl = canvas.toDataURL("image/png");
+      w = cw; h = ch;
+    }
+    return { name: file.name, type: file.type, size: file.size, dataUrl, width: w, height: h };
+  }
+
+  function renderPreviews(key){
+    const box = document.getElementById("prev-" + key);
+    box.innerHTML = "";
+    uploads[key].forEach((u, idx) => {
+      const d = document.createElement("div");
+      d.className = "prev";
+      const img = document.createElement("img");
+      img.src = u.dataUrl; img.alt = u.name;
+      const nm = document.createElement("div"); nm.textContent = u.name;
+      const rm = document.createElement("button");
+      rm.type = "button"; rm.title = "Remove"; rm.textContent = "×";
+      rm.addEventListener("click", () => { uploads[key].splice(idx,1); renderPreviews(key); saveUploads(); });
+      d.append(rm, img, nm);
+      box.appendChild(d);
+    });
+  }
+
+  async function handleFiles(key, fileList){
+    const files = Array.from(fileList);
+    if (!files.length) return;
+    const multiple = key === "design" || key === "position";
+    const list = multiple ? files : [files[0]];
+    for (const f of list){
+      try {
+        const u = await processFile(f);
+        if (multiple) uploads[key].push(u); else uploads[key] = [u];
+      } catch (e){
+        alert(e.message);
+      }
+    }
+    renderPreviews(key);
+    saveUploads();
+  }
+
+  const inputMap = { front: "logoFront", back: "logoBack", design: "designFiles", position: "positionFiles" };
+  Object.entries(inputMap).forEach(([key, id]) => {
+    const inp = document.getElementById(id);
+    inp.addEventListener("change", () => { handleFiles(key, inp.files); inp.value = ""; });
+  });
+  document.querySelectorAll(".drop").forEach(zone => {
+    const key = zone.dataset.target;
+    ["dragenter","dragover"].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.add("drag"); }));
+    ["dragleave","drop"].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.remove("drag"); }));
+    zone.addEventListener("drop", e => handleFiles(key, e.dataTransfer.files));
+  });
+
+  // ---------- Collect & validate ----------
+  function val(id){ return document.getElementById(id).value.trim(); }
+  function collect(){
+    const q = getQuantities();
+    const sel = (n) => { const c = document.querySelector('input[name="'+n+'"]:checked'); return c ? c.value : ""; };
+    return {
+      orderType: sel("orderType"),
+      teamName: val("teamName"),
+      contactName: val("contactName"),
+      email: val("email"),
+      phone: val("phone"),
+      quantities: q,
+      totalQty: SIZES.reduce((a,s)=>a+q[s],0),
+      players: getPlayers(),
+      fabric: sel("fabric"),
+      frontPos: val("frontPos"),
+      backPos: val("backPos"),
+      posNotes: val("posNotes"),
+      extraDetails: document.getElementById("extraDetails").value.trim(),
+      uploads
+    };
+  }
+
+  function setInvalid(el, bad){ el.classList.toggle("invalid", bad); return !bad; }
+  function validate(d){
+    const checks = [
+      setInvalid(document.getElementById("sec-type"), !d.orderType),
+      setInvalid(document.getElementById("f-team"), !d.teamName),
+      setInvalid(document.getElementById("f-contact"), !d.contactName),
+      setInvalid(document.getElementById("f-email"), !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email)),
+      setInvalid(document.getElementById("sec-sizes"), d.totalQty <= 0),
+      setInvalid(document.getElementById("sec-fabric"), !d.fabric)
+    ];
+    let playersOk = true;
+    d.players.forEach(p => {
+      const bad = !p.size || (!p.name && !p.number);
+      p.tr.classList.toggle("bad", bad);
+      if (bad) playersOk = false;
+    });
+    document.getElementById("playerError").classList.toggle("show", !playersOk);
+    checks.push(playersOk);
+    const ok = checks.every(Boolean);
+    if (!ok){
+      const first = document.querySelector(".invalid, .players tr.bad");
+      if (first) first.scrollIntoView({behavior:"smooth", block:"center"});
+    }
+    return ok;
+  }
+  // Clear error state as user fixes things
+  document.getElementById("orderForm").addEventListener("input", e => {
+    const inv = e.target.closest(".invalid"); if (inv) inv.classList.remove("invalid");
+  });
+  document.getElementById("orderForm").addEventListener("change", e => {
+    const inv = e.target.closest(".invalid"); if (inv) inv.classList.remove("invalid");
+  });
+
+  function makeOrderId(){
+    const d = new Date();
+    const pad = n => String(n).padStart(2,"0");
+    return "OG-" + d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate()) + "-" +
+      Array.from({length:4}, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random()*32)]).join("");
+  }
+
+  // ---------- Excel export ----------
+  const HEADER_FILL = { type:"pattern", pattern:"solid", fgColor:{ argb:"FF0F1B2D" } };
+  const ACCENT_FILL = { type:"pattern", pattern:"solid", fgColor:{ argb:"FFE4572E" } };
+  const LABEL_FILL  = { type:"pattern", pattern:"solid", fgColor:{ argb:"FFF1F3F7" } };
+  const BORDER = { top:{style:"thin",color:{argb:"FFDFE3EA"}}, left:{style:"thin",color:{argb:"FFDFE3EA"}},
+                   bottom:{style:"thin",color:{argb:"FFDFE3EA"}}, right:{style:"thin",color:{argb:"FFDFE3EA"}} };
+
+  function extOf(u){
+    const m = /^data:image\/(png|jpeg|gif)/.exec(u.dataUrl);
+    return m ? m[1] : "png";
+  }
+
+  function addImageSheet(wb, sheetName, title, files, orderId, info){
+    const ws = wb.addWorksheet(sheetName);
+    ws.getColumn(1).width = 90;
+    const t = ws.getCell("A1");
+    t.value = title + " — " + orderId;
+    t.font = { bold:true, size:14, color:{argb:"FFFFFFFF"} };
+    t.fill = HEADER_FILL;
+    ws.getRow(1).height = 26;
+
+    let start = 3;
+    if (info && info.length){
+      ws.getColumn(1).width = 24; ws.getColumn(2).width = 66;
+      ws.mergeCells("A1:B1");
+      info.forEach(([k, v], i) => {
+        const a = ws.getCell(start + i, 1), b = ws.getCell(start + i, 2);
+        a.value = k; b.value = v;
+        a.font = { bold:true }; a.fill = LABEL_FILL; a.border = BORDER; b.border = BORDER;
+        b.alignment = { wrapText:true, vertical:"top" };
+      });
+      start += info.length + 1;
+    }
+    if (!files.length){
+      const c = ws.getCell("A" + start);
+      c.value = "No file uploaded.";
+      c.font = { italic:true, color:{argb:"FF5B6678"} };
+      return;
+    }
+    const MAX_W = 600, MAX_H = 450;
+    const ROW_PX = 20; // default row height ≈ 20px
+    let row = start; // 1-based row for text
+    files.forEach((u, i) => {
+      const c = ws.getCell("A" + row);
+      c.value = (files.length > 1 ? (i+1) + ". " : "") + "File: " + u.name +
+                "  (" + Math.round(u.size/1024) + " KB, " + u.width + "×" + u.height + "px)";
+      c.font = { bold:true };
+      const scale = Math.min(1, MAX_W / u.width, MAX_H / u.height);
+      const w = Math.round(u.width * scale), h = Math.round(u.height * scale);
+      const id = wb.addImage({ base64: u.dataUrl, extension: extOf(u) });
+      ws.addImage(id, { tl: { col: 0, row: row }, ext: { width: w, height: h } }); // tl row is 0-based → row below text
+      row += Math.ceil(h / ROW_PX) + 3;
+    });
+  }
+
+  async function buildWorkbook(d, orderId){
+    if (typeof ExcelJS === "undefined") throw new Error("The Excel library didn't load. Please check your internet connection and try again.");
+    const wb = new ExcelJS.Workbook();
+    wb.creator = "OG Shirts";
+    wb.created = new Date();
+
+    // --- Sheet 1: Order details ---
+    const ws = wb.addWorksheet("Order Details");
+    ws.columns = [{ width: 26 }, { width: 60 }];
+
+    ws.mergeCells("A1:B1");
+    const h = ws.getCell("A1");
+    h.value = "OG Shirts — Custom Order";
+    h.font = { bold:true, size:16, color:{argb:"FFFFFFFF"} };
+    h.fill = HEADER_FILL; h.alignment = { vertical:"middle" };
+    ws.getRow(1).height = 30;
+
+    const rows = [
+      ["Order reference", orderId],
+      ["Order date", new Date().toLocaleString()],
+      ["Order type", d.orderType],
+      ["Team / Company name", d.teamName],
+      ["Contact name", d.contactName],
+      ["Email", d.email],
+      ["Phone", d.phone || "—"],
+      ["Fabric", d.fabric],
+      ["Players", d.players.length ? d.players.length + " player(s)  (see 'Player Details' sheet)" : "Not provided"],
+      ["Front logo", d.uploads.front.length ? d.uploads.front[0].name + "  (see 'Front Logo' sheet)" : "Not provided"],
+      ["Back logo", d.uploads.back.length ? d.uploads.back[0].name + "  (see 'Back Logo' sheet)" : "Not provided"],
+      ["Shirt design", d.uploads.design.length ? d.uploads.design.length + " file(s): " + d.uploads.design.map(u=>u.name).join(", ") + "  (see 'Shirt Design' sheet)" : "Not provided"],
+      ["Front logo position", d.frontPos || "—"],
+      ["Back logo position", d.backPos || "—"],
+      ["Logo position design", d.uploads.position.length ? d.uploads.position.length + " file(s): " + d.uploads.position.map(u=>u.name).join(", ") + "  (see 'Logo Position' sheet)" : "Not provided"],
+      ["Extra details", d.extraDetails || "—"]
+    ];
+    let r = 3;
+    rows.forEach(([k, v]) => {
+      const a = ws.getCell("A" + r), b = ws.getCell("B" + r);
+      a.value = k; b.value = v;
+      a.font = { bold:true }; a.fill = LABEL_FILL;
+      a.border = BORDER; b.border = BORDER;
+      a.alignment = { vertical:"top" };
+      b.alignment = { vertical:"top", wrapText:true };
+      if (k === "Extra details" && v.length > 60) ws.getRow(r).height = Math.min(300, 15 * Math.ceil(v.length / 60 + (v.split("\n").length - 1)));
+      r++;
+    });
+
+    // Size breakdown
+    r += 1;
+    ws.mergeCells("A" + r + ":B" + r);
+    const sh = ws.getCell("A" + r);
+    sh.value = "Size breakdown";
+    sh.font = { bold:true, color:{argb:"FFFFFFFF"} }; sh.fill = ACCENT_FILL;
+    r++;
+    ["Size","Quantity"].forEach((t, i) => {
+      const c = ws.getCell(r, i+1);
+      c.value = t; c.font = { bold:true }; c.fill = LABEL_FILL; c.border = BORDER;
+    });
+    r++;
+    const subtotalCells = [];
+    SIZE_GROUPS.forEach(g => {
+      const codes = SIZES.filter(c => c.startsWith(g.key + "-"));
+      const sub = codes.reduce((a,c)=>a+d.quantities[c],0);
+      if (!sub) return;
+      const gh = ws.getCell(r,1);
+      gh.value = g.label; gh.font = { bold:true, color:{argb:"FFE4572E"} };
+      r++;
+      const first = r;
+      codes.filter(c => d.quantities[c] > 0).forEach(c => {
+        const info = SIZE_INFO[c];
+        ws.getCell(r,1).value = "   " + info.size + (info.age ? "  (age " + info.age + ")" : "");
+        ws.getCell(r,2).value = d.quantities[c];
+        ws.getCell(r,1).border = BORDER; ws.getCell(r,2).border = BORDER;
+        ws.getCell(r,2).alignment = { horizontal:"left" };
+        r++;
+      });
+      ws.getCell(r,1).value = g.label + " subtotal";
+      ws.getCell(r,1).font = { italic:true };
+      ws.getCell(r,2).value = { formula: "SUM(B" + first + ":B" + (r-1) + ")", result: sub };
+      ws.getCell(r,2).font = { italic:true };
+      ws.getCell(r,2).alignment = { horizontal:"left" };
+      subtotalCells.push("B" + r);
+      r += 2;
+    });
+    ws.getCell(r,1).value = "Total";
+    ws.getCell(r,1).font = { bold:true };
+    ws.getCell(r,2).value = { formula: subtotalCells.join("+") || "0", result: d.totalQty };
+    ws.getCell(r,2).font = { bold:true };
+    ws.getCell(r,2).alignment = { horizontal:"left" };
+    ws.getCell(r,1).border = BORDER; ws.getCell(r,2).border = BORDER;
+
+    // --- Player sheet ---
+    const ps = wb.addWorksheet("Player Details");
+    ps.columns = [{ width: 6 }, { width: 34 }, { width: 24 }, { width: 10 }];
+    ps.mergeCells("A1:D1");
+    const pt = ps.getCell("A1");
+    pt.value = "Player Details — " + d.teamName + " (" + orderId + ")";
+    pt.font = { bold:true, size:14, color:{argb:"FFFFFFFF"} };
+    pt.fill = HEADER_FILL;
+    ps.getRow(1).height = 26;
+    if (!d.players.length){
+      ps.getCell("A3").value = "No player details provided.";
+      ps.getCell("A3").font = { italic:true, color:{argb:"FF5B6678"} };
+    } else {
+      ["#","Player name","Size","Number"].forEach((t, i) => {
+        const c = ps.getCell(3, i+1);
+        c.value = t; c.font = { bold:true, color:{argb:"FFFFFFFF"} }; c.fill = ACCENT_FILL; c.border = BORDER;
+      });
+      d.players.forEach((p, i) => {
+        const rr = 4 + i;
+        const vals = [i+1, p.name || "—", sizeLabel(p.size), p.number || "—"];
+        vals.forEach((v, j) => {
+          const c = ps.getCell(rr, j+1);
+          c.value = v; c.border = BORDER;
+          c.alignment = { horizontal: j === 1 ? "left" : "center" };
+          if (j === 3) c.numFmt = "@"; // keep numbers like "07" as text
+        });
+      });
+      const tr = 4 + d.players.length;
+      ps.getCell(tr, 2).value = "Total players: " + d.players.length;
+      ps.getCell(tr, 2).font = { bold:true };
+      ps.views = [{ state:"frozen", ySplit:3 }];
+    }
+
+    // --- Image sheets ---
+    addImageSheet(wb, "Front Logo",   "Front Logo",   d.uploads.front,  orderId);
+    addImageSheet(wb, "Back Logo",    "Back Logo",    d.uploads.back,   orderId);
+    addImageSheet(wb, "Shirt Design", "Shirt Design", d.uploads.design, orderId);
+    addImageSheet(wb, "Logo Position", "Logo Position", d.uploads.position, orderId, [
+      ["Front logo position", d.frontPos || "—"],
+      ["Back logo position",  d.backPos  || "—"],
+      ["Placement notes",     d.posNotes || "—"]
+    ]);
+
+    return wb;
+  }
+
+  function excelFileName(d, orderId){
+    const safeTeam = d.teamName.replace(/[^a-z0-9]+/gi, "_").replace(/^_|_$/g, "").slice(0, 40) || "Order";
+    return orderId + "_" + safeTeam + ".xlsx";
+  }
+  function toBase64(buf){
+    const bytes = new Uint8Array(buf); let bin = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(bin);
+  }
+
+  async function downloadExcel(btn){
+    const d = collect();
+    if (!validate(d)) return;
+    if (!currentOrderId) currentOrderId = makeOrderId();
+    const label = btn.textContent;
+    btn.disabled = true; btn.textContent = "Preparing…";
+    try {
+      const wb = await buildWorkbook(d, currentOrderId);
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], { type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = excelFileName(d, currentOrderId);
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    } catch (e){
+      alert("Sorry, the Excel file couldn't be created: " + e.message);
+    } finally {
+      btn.disabled = false; btn.textContent = label;
+    }
+  }
+
+  // ---------- Submit ----------
+  function summaryItems(d){
+    const sizesTxt = SIZES.filter(s => d.quantities[s] > 0).map(s => sizeLabel(s) + ": " + d.quantities[s]).join(", ");
+    return [
+      ["Order type", d.orderType],
+      ["Team / Company", d.teamName],
+      ["Contact", d.contactName + " · " + d.email + (d.phone ? " · " + d.phone : "")],
+      ["Sizes", sizesTxt + "  (Total " + d.totalQty + ")"],
+      ["Fabric", d.fabric],
+      ["Players", d.players.length ? d.players.map(p => [p.number ? "#" + p.number : "", p.name, "(" + sizeLabel(p.size) + ")"].filter(Boolean).join(" ")).join("\n") : "Not provided"],
+      ["Front logo", d.uploads.front[0] ? d.uploads.front[0].name : "Not provided"],
+      ["Back logo", d.uploads.back[0] ? d.uploads.back[0].name : "Not provided"],
+      ["Shirt design", d.uploads.design.length ? d.uploads.design.map(u=>u.name).join(", ") : "Not provided"],
+      ["Logo position", ["Front: " + (d.frontPos || "—"), "Back: " + (d.backPos || "—"), d.posNotes ? "Notes: " + d.posNotes : "",
+        d.uploads.position.length ? "Files: " + d.uploads.position.map(u=>u.name).join(", ") : ""].filter(Boolean).join("\n")],
+      ["Extra details", d.extraDetails || "—"]
+    ];
+  }
+  function showSummary(d){
+    const t = document.getElementById("summaryTable");
+    t.innerHTML = "";
+    summaryItems(d).forEach(([k,v]) => {
+      const tr = document.createElement("tr");
+      const a = document.createElement("td"), b = document.createElement("td");
+      a.textContent = k; b.textContent = v; b.style.whiteSpace = "pre-wrap";
+      tr.append(a,b); t.appendChild(tr);
+    });
+  }
+
+  document.getElementById("downloadBtn").addEventListener("click", e => downloadExcel(e.currentTarget));
+  document.getElementById("downloadBtn2").addEventListener("click", e => downloadExcel(e.currentTarget));
+
+  document.getElementById("newOrderBtn").addEventListener("click", () => {
+    const f = document.getElementById("orderForm");
+    clearForm();
+    uploads.front = []; uploads.back = []; uploads.design = []; uploads.position = [];
+    ["front","back","design","position"].forEach(renderPreviews);
+    resetPlayers();
+    updateTotal();
+    currentOrderId = null;
+    document.getElementById("successBox").classList.remove("show");
+    f.style.display = "";
+    window.scrollTo({top:0, behavior:"smooth"});
+  });
+  // ---------- Draft autosave (keeps entries if the page is refreshed or closed) ----------
+  const DRAFT_KEY = "ogShirtsOrderDraft", UPLOAD_KEY = "ogShirtsOrderUploads";
+  const TEXT_IDS = ["teamName","contactName","email","phone","extraDetails","frontPos","backPos","posNotes"];
+  let saveTimer = null;
+
+  function store(){ try { return window.localStorage; } catch(e){ return null; } }
+
+  function snapshot(){
+    const sel = n => { const c = document.querySelector('input[name="'+n+'"]:checked'); return c ? c.value : ""; };
+    const d = { orderType: sel("orderType"), fabric: sel("fabric"), qty: {}, players: [] };
+    TEXT_IDS.forEach(id => d[id] = document.getElementById(id).value);
+    qtyInputs.forEach(inp => d.qty[inp.dataset.size] = inp.value);
+    d.players = Array.from(playerBody.rows).map(tr => ({
+      name: tr.querySelector(".p-name").value,
+      size: tr.querySelector(".p-size").value,
+      number: tr.querySelector(".p-num").value
+    }));
+    return d;
+  }
+  function hasData(){
+    const d = snapshot();
+    return !!(d.orderType || d.fabric || TEXT_IDS.some(id => d[id].trim()) ||
+      Object.values(d.qty).some(v => v) || d.players.some(p => p.name || p.size || p.number) ||
+      uploads.front.length || uploads.back.length || uploads.design.length || uploads.position.length);
+  }
+  function saveDraft(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(writeDraft, 300);
+  }
+  function writeDraft(){
+    clearTimeout(saveTimer); saveTimer = null;
+    const st = store(); if (!st) return setStatus("Auto-save isn't available in this browser.", true);
+    try { st.setItem(DRAFT_KEY, JSON.stringify(snapshot())); setStatus("✓ Your details are saved automatically"); }
+    catch(e){ setStatus("Couldn't auto-save your details.", true); }
+  }
+  function saveUploads(){
+    const st = store(); if (!st) return;
+    try { st.setItem(UPLOAD_KEY, JSON.stringify(uploads)); setStatus("✓ Your details are saved automatically"); }
+    catch(e){
+      try { st.removeItem(UPLOAD_KEY); } catch(_){}
+      setStatus("Details saved. Images are too large to auto-save, so re-upload them if you refresh.", true);
+    }
+  }
+  function setStatus(msg, warn){
+    const s = document.getElementById("draftStatus");
+    s.textContent = msg; s.className = "draft-status" + (warn ? " warn" : "");
+  }
+  function clearDraft(){
+    clearTimeout(saveTimer); saveTimer = null;
+    const st = store(); if (!st) return;
+    try { st.removeItem(DRAFT_KEY); st.removeItem(UPLOAD_KEY); } catch(e){}
+  }
+  function restoreDraft(){
+    const st = store(); if (!st) return;
+    let d = null, u = null;
+    try { d = JSON.parse(st.getItem(DRAFT_KEY) || "null"); } catch(e){}
+    try { u = JSON.parse(st.getItem(UPLOAD_KEY) || "null"); } catch(e){}
+    if (d){
+      TEXT_IDS.forEach(id => { if (typeof d[id] === "string") document.getElementById(id).value = d[id]; });
+      ["orderType","fabric"].forEach(n => {
+        document.querySelectorAll('input[name="'+n+'"]').forEach(r => { r.checked = (r.value === d[n]); });
+      });
+      qtyInputs.forEach(inp => { inp.value = (d.qty && d.qty[inp.dataset.size]) || ""; });
+      if (Array.isArray(d.players) && d.players.length){
+        playerBody.innerHTML = "";
+        d.players.slice(0, MAX_PLAYERS).forEach(p => addPlayerRow(false, p));
+      }
+    }
+    if (u){
+      ["front","back","design","position"].forEach(k => { if (Array.isArray(u[k])) uploads[k] = u[k]; renderPreviews(k); });
+    }
+    updateTotal();
+  }
+  function clearForm(){
+    TEXT_IDS.forEach(id => document.getElementById(id).value = "");
+    document.querySelectorAll('#orderForm input[type=radio]').forEach(r => r.checked = false);
+    qtyInputs.forEach(inp => inp.value = "");
+    document.querySelectorAll("#orderForm .invalid").forEach(el => el.classList.remove("invalid"));
+    clearDraft();
+  }
+
+  const formEl = document.getElementById("orderForm");
+  formEl.addEventListener("input", saveDraft);
+  formEl.addEventListener("change", saveDraft);
+  addPlayerBtn.addEventListener("click", saveDraft);
+  document.getElementById("syncSizesBtn").addEventListener("click", saveDraft);
+  // Safety net: pressing Enter in a field never does anything unexpected
+  formEl.addEventListener("keydown", e => {
+    if (e.key === "Enter" && e.target.tagName === "INPUT") e.preventDefault();
+  });
+  // Save immediately if the page is closed or refreshed before the auto-save delay
+  window.addEventListener("pagehide", () => { if (saveTimer && formEl.style.display !== "none") writeDraft(); });
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && saveTimer) writeDraft(); });
+  // Warn before leaving the page with unsent details
+  window.addEventListener("beforeunload", e => {
+    if (formEl.style.display !== "none" && hasData()){ e.preventDefault(); e.returnValue = ""; }
+  });
+
+  document.getElementById("clearBtn").addEventListener("click", () => {
+    if (!confirm("Clear everything you've entered on this form?")) return;
+    clearForm();
+    uploads.front = []; uploads.back = []; uploads.design = []; uploads.position = [];
+    ["front","back","design","position"].forEach(renderPreviews);
+    resetPlayers();
+    updateTotal();
+    setStatus("");
+    window.scrollTo({top:0, behavior:"smooth"});
+  });
+
+  restoreDraft();
+  if (hasData()) setStatus("✓ Your saved details were restored");
+})();
+</script>
+</body>
+</html>
