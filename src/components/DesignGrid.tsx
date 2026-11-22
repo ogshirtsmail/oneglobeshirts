@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-type Design = { file: string; src: string; uploaded?: boolean };
+type Design = { file: string; src: string; uploaded?: boolean; url?: string };
 
 export default function DesignGrid({
   designs: initialDesigns,
@@ -37,7 +37,7 @@ export default function DesignGrid({
         ? await fetch("/api/admin/delete", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ url: design.src }),
+            body: JSON.stringify({ url: design.url ?? design.src }),
           })
         : await fetch("/api/admin/designs", {
             method: "POST",
