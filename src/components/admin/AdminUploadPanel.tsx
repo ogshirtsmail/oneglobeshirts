@@ -10,6 +10,7 @@ import {
   prefixFor,
   type UploadTarget,
 } from "@/lib/uploads";
+import { BLOB_UPLOAD_ACCESS, blobImageSrc } from "@/lib/blob-url";
 
 type ExistingBlob = { url: string; pathname: string; size: number; uploadedAt: string };
 
@@ -87,7 +88,7 @@ export default function AdminUploadPanel() {
       setQueue((q) => q.map((x) => (x.id === item.id ? { ...x, status: "uploading" } : x)));
       try {
         await upload(pathnameFor(target, item.file.name), item.file, {
-          access: "public",
+          access: BLOB_UPLOAD_ACCESS,
           handleUploadUrl: "/api/admin/upload",
           onUploadProgress: ({ percentage }) => {
             setQueue((q) => q.map((x) => (x.id === item.id ? { ...x, progress: percentage } : x)));
@@ -261,7 +262,7 @@ export default function AdminUploadPanel() {
             {existing.map((blob) => (
               <div key={blob.url} className="group relative overflow-hidden rounded-lg border border-line bg-white">
                 {/* eslint-disable-next-line @next/next/no-img-element -- admin thumbnail grid of remote blob URLs */}
-                <img src={blob.url} alt="" className="aspect-square w-full object-cover" loading="lazy" />
+                <img src={blobImageSrc(blob.url, blob.pathname)} alt="" className="aspect-square w-full object-cover" loading="lazy" />
                 <button
                   type="button"
                   onClick={() => handleDelete(blob.url)}

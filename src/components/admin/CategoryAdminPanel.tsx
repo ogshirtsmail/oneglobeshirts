@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 import { ALLOWED_UPLOAD_CONTENT_TYPES, MAX_UPLOAD_SIZE_BYTES, pathnameFor } from "@/lib/uploads";
+import { BLOB_UPLOAD_ACCESS } from "@/lib/blob-url";
 
 type HiddenDesign = { file: string; src: string };
 type Item = { id: string; name: string; status: "uploading" | "done" | "error"; progress: number; error?: string };
@@ -55,7 +56,7 @@ export default function CategoryAdminPanel({
       if (item.status === "error") continue;
       try {
         await upload(pathnameFor({ type: "design", category }, file.name), file, {
-          access: "public",
+          access: BLOB_UPLOAD_ACCESS,
           handleUploadUrl: "/api/admin/upload",
           onUploadProgress: ({ percentage }) =>
             setItems((prev) => prev.map((x) => (x.id === item.id ? { ...x, progress: Math.round(percentage) } : x))),
