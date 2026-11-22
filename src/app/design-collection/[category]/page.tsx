@@ -2,11 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import fs from "node:fs";
 import path from "node:path";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import DesignSubNav from "@/components/DesignSubNav";
 import DesignGrid from "@/components/DesignGrid";
 import { getDesignCategory } from "@/lib/design-categories";
 import { listBlobImages } from "@/lib/blob";
+import { isAdminFromHeaders } from "@/lib/admin-access";
+import { getHiddenDesigns } from "@/lib/admin-store";
+import CategoryAdminPanel from "@/components/admin/CategoryAdminPanel";
 
 // Pages depend on live Blob uploads (see /admin/upload), so they must be
 // rendered per-request rather than baked in at build time.
@@ -37,11 +41,17 @@ function getLocalDesigns(slug: string) {
 }
 
 async function getCategoryDesigns(slug: string) {
-  const [local, uploaded] = await Promise.all([
+  const [local, uploaded, hidden] = await Promise.all([
     getLocalDesigns(slug),
     listBlobImages(`designs/${slug}/`),
+    getHiddenDesigns(slug),
   ]);
-  return [...local, ...uploaded];
+  const designs = [
+    ...local.filter((d) => !hidden.has(d.file)).map((d) => ({ ...d, uploaded: false })),
+    ...uploaded.map((d) => ({ ...d, uploaded: true })),
+  ];
+  const hiddenDesigns = local.filter((d) => hidden.has(d.file));
+  return { designs, hiddenDesigns };
 }
 
 export default async function DesignCategoryPage({
@@ -53,7 +63,10 @@ export default async function DesignCategoryPage({
   const cat = getDesignCategory(category);
   if (!cat) notFound();
 
-  const designs = await getCategoryDesigns(cat.slug);
+  const [{ designs, hiddenDesigns }, isAdmin] = await Promise.all([
+    getCategoryDesigns(cat.slug),
+    headers().then((h) => isAdminFromHeaders(h)),
+  ]);
 
   return (
     <div>
@@ -75,9 +88,23 @@ export default async function DesignCategoryPage({
 
       <DesignSubNav activeSlug={cat.slug} />
 
+      {isAdmin && (
+        <CategoryAdminPanel
+          category={cat.slug}
+          categoryLabel={cat.label}
+          liveCount={designs.length}
+          hiddenDesigns={hiddenDesigns}
+        />
+      )}
+
       {designs.length > 0 ? (
         <section className="mx-auto max-w-6xl px-6 py-16">
-          <DesignGrid designs={designs} categoryLabel={cat.label} pageSize={100} />
+          <DesignGrid
+            designs={designs}
+            categoryLabel={cat.label}
+            pageSize={100}
+            adminCategory={isAdmin ? cat.slug : undefined}
+          />
         </section>
       ) : (
         <section className="mx-auto max-w-6xl px-6 py-20 text-center">
