@@ -325,19 +325,19 @@
     <p class="hint">Upload PNG, JPG, SVG, GIF or WEBP files (max 10 MB each). High-resolution files with transparent backgrounds work best.</p>
 
     <div style="margin-bottom:18px">
-      <label>Logo – Front <span class="opt">(optional)</span></label>
+      <label>Logo – Front <span class="opt">(optional – you can add several)</span></label>
       <label class="drop" data-target="front">
-        <input type="file" accept="image/*" id="logoFront">
-        <strong>Click to upload</strong> or drag &amp; drop the front logo
+        <input type="file" accept="image/*" id="logoFront" multiple>
+        <strong>Click to upload</strong> or drag &amp; drop the front logos
       </label>
       <div class="previews" id="prev-front"></div>
     </div>
 
     <div style="margin-bottom:18px">
-      <label>Logo – Back <span class="opt">(optional)</span></label>
+      <label>Logo – Back <span class="opt">(optional – you can add several)</span></label>
       <label class="drop" data-target="back">
-        <input type="file" accept="image/*" id="logoBack">
-        <strong>Click to upload</strong> or drag &amp; drop the back logo
+        <input type="file" accept="image/*" id="logoBack" multiple>
+        <strong>Click to upload</strong> or drag &amp; drop the back logos
       </label>
       <div class="previews" id="prev-back"></div>
     </div>
@@ -795,7 +795,7 @@
   async function handleFiles(key, fileList){
     const files = Array.from(fileList);
     if (!files.length) return;
-    const multiple = key === "design" || key === "position" || key === "sizechart";
+    const multiple = true; // every upload area accepts several images
     const list = multiple ? files : [files[0]];
     for (const f of list){
       try {
@@ -1039,8 +1039,8 @@
       ["Size chart", (SIZE_CHARTS[d.sizeChart] ? SIZE_CHARTS[d.sizeChart].title : "None selected") +
         (d.uploads.sizechart.length ? "; customer uploaded " + d.uploads.sizechart.length + " chart(s)" : "") + "  (see 'Size Chart' sheet)"],
       ["Players", d.players.length ? d.players.length + " player(s)  (see 'Player Details' sheet)" : "Not provided"],
-      ["Front logo", d.uploads.front.length ? d.uploads.front[0].name + "  (see 'Front Logo' sheet)" : "Not provided"],
-      ["Back logo", d.uploads.back.length ? d.uploads.back[0].name + "  (see 'Back Logo' sheet)" : "Not provided"],
+      ["Front logo", d.uploads.front.length ? d.uploads.front.length + " file(s): " + d.uploads.front.map(u=>u.name).join(", ") + "  (see 'Front Logo' sheet)" : "Not provided"],
+      ["Back logo", d.uploads.back.length ? d.uploads.back.length + " file(s): " + d.uploads.back.map(u=>u.name).join(", ") + "  (see 'Back Logo' sheet)" : "Not provided"],
       ["Shirt design", d.uploads.design.length ? d.uploads.design.length + " file(s): " + d.uploads.design.map(u=>u.name).join(", ") + "  (see 'Shirt Design' sheet)" : "Not provided"],
       ["Front logo position", d.frontPos || "—"],
       ["Back logo position", d.backPos || "—"],
@@ -1196,8 +1196,8 @@
       ["Size chart", [SIZE_CHARTS[d.sizeChart] ? SIZE_CHARTS[d.sizeChart].title : "",
         d.uploads.sizechart.length ? "Uploaded: " + d.uploads.sizechart.map(u=>u.name).join(", ") : ""].filter(Boolean).join("\n") || "Not provided"],
       ["Players", d.players.length ? d.players.map(p => [p.number ? "#" + p.number : "", p.name, "(" + sizeLabel(p.size) + ")"].filter(Boolean).join(" ")).join("\n") : "Not provided"],
-      ["Front logo", d.uploads.front[0] ? d.uploads.front[0].name : "Not provided"],
-      ["Back logo", d.uploads.back[0] ? d.uploads.back[0].name : "Not provided"],
+      ["Front logo", d.uploads.front.length ? d.uploads.front.map(u=>u.name).join(", ") : "Not provided"],
+      ["Back logo", d.uploads.back.length ? d.uploads.back.map(u=>u.name).join(", ") : "Not provided"],
       ["Shirt design", d.uploads.design.length ? d.uploads.design.map(u=>u.name).join(", ") : "Not provided"],
       ["Logo position", ["Front: " + (d.frontPos || "—"), "Back: " + (d.backPos || "—"), d.posNotes ? "Notes: " + d.posNotes : "",
         d.uploads.position.length ? "Files: " + d.uploads.position.map(u=>u.name).join(", ") : ""].filter(Boolean).join("\n")],
