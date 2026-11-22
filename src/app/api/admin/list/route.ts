@@ -5,7 +5,7 @@ import { isAllowedAdminRequest } from "@/lib/admin-access";
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  if (!isAllowedAdminRequest(request)) {
+  if (!(await isAllowedAdminRequest(request))) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
   if (!process.env.BLOB_READ_WRITE_TOKEN) {

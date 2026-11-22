@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import AdminUploadPanel from "@/components/admin/AdminUploadPanel";
 
 export const metadata: Metadata = {
@@ -15,6 +16,9 @@ export default function AdminUploadPage() {
         plain 404. Anything you upload here appears on the live site
         immediately.
       </p>
+      <Link href="/admin/access" className="mt-3 inline-block text-sm font-semibold text-brand hover:text-brand-dark">
+        Manage which IP addresses can use admin tools →
+      </Link>
       <div className="mt-10">
         <AdminUploadPanel />
       </div>

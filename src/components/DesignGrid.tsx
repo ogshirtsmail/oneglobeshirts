@@ -2,18 +2,56 @@
 
 import { useEffect, useRef, useState } from "react";
 
-type Design = { file: string; src: string };
+type Design = { file: string; src: string; uploaded?: boolean };
 
 export default function DesignGrid({
-  designs,
+  designs: initialDesigns,
   categoryLabel,
   pageSize = 100,
+  adminCategory,
 }: {
   designs: Design[];
   categoryLabel: string;
   pageSize?: number;
+  /** Set only for admins (allowed IPs): shows a delete button on each design. */
+  adminCategory?: string;
 }) {
-  const [visible, setVisible] = useState(Math.min(pageSize, designs.length));
+  const [designs, setDesigns] = useState(initialDesigns);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [visible, setVisible] = useState(Math.min(pageSize, initialDesigns.length));
+
+  // Pick up server changes (e.g. after an upload + router.refresh()).
+  useEffect(() => {
+    setDesigns(initialDesigns);
+  }, [initialDesigns]);
+
+  async function removeDesign(design: Design) {
+    if (!adminCategory) return;
+    const what = design.uploaded
+      ? "Delete this uploaded design permanently?"
+      : "Remove this design from the site? (You can restore it from the admin panel above.)";
+    if (!window.confirm(what)) return;
+    setBusy(design.src);
+    try {
+      const res = design.uploaded
+        ? await fetch("/api/admin/delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: design.src }),
+          })
+        : await fetch("/api/admin/designs", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "hide", category: adminCategory, file: design.file }),
+          });
+      if (!res.ok) throw new Error(String(res.status));
+      setDesigns((list) => list.filter((d) => d.src !== design.src));
+    } catch {
+      window.alert("Sorry, that design couldn't be removed. Please try again.");
+    } finally {
+      setBusy(null);
+    }
+  }
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   // Load the next 100 automatically as the sentinel scrolls into view.
@@ -41,9 +79,23 @@ export default function DesignGrid({
       <div className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-4">
         {shown.map((design, i) => (
           <div
-            key={design.file}
-            className="overflow-hidden rounded-xl border border-line bg-white"
+            key={design.src}
+            className={`relative overflow-hidden rounded-xl border border-line bg-white ${
+              busy === design.src ? "opacity-40" : ""
+            }`}
           >
+            {adminCategory && (
+              <button
+                type="button"
+                onClick={() => removeDesign(design)}
+                disabled={busy === design.src}
+                aria-label={`Delete design ${i + 1}`}
+                title={design.uploaded ? "Delete (uploaded image)" : "Remove from site (can be restored)"}
+                className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/70 text-lg leading-none text-white shadow transition-colors hover:bg-red-600"
+              >
+                &times;
+              </button>
+            )}
             {/* eslint-disable-next-line @next/next/no-img-element -- large static catalog; plain <img> with native lazy-loading avoids per-image optimizer overhead */}
             <img
               src={design.src}

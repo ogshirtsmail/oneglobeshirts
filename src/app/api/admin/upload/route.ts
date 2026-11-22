@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 // directly). Files never pass through this function's own request body, so
 // there's no serverless body-size limit to worry about.
 export async function POST(request: Request) {
-  if (!isAllowedAdminRequest(request)) {
+  if (!(await isAllowedAdminRequest(request))) {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
