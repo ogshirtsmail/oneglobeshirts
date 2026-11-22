@@ -26,12 +26,14 @@ async function listAll(prefix: string) {
 }
 
 async function putMarker(pathname: string) {
-  await put(pathname, "1", {
-    access: "public",
-    addRandomSuffix: false,
-    allowOverwrite: true,
-    contentType: "text/plain",
-  });
+  const opts = { addRandomSuffix: false, allowOverwrite: true, contentType: "text/plain" } as const;
+  try {
+    await put(pathname, "1", { access: "public", ...opts });
+  } catch (err) {
+    // A private Blob store rejects public writes; markers are only ever listed, so private is fine.
+    console.warn("Public marker write failed, retrying as private:", err);
+    await put(pathname, "1", { access: "private", ...opts });
+  }
 }
 
 // ---------------------------------------------------------------- admin IPs

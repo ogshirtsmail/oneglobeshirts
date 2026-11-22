@@ -36,6 +36,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("Design hide/restore failed:", err);
-    return NextResponse.json({ error: "update_failed" }, { status: 502 });
+    return NextResponse.json({ error: "update_failed" , detail: err instanceof Error ? err.message : String(err) }, { status: 502 });
   }
 }

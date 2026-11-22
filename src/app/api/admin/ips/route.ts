@@ -60,7 +60,7 @@ export async function POST(request: Request) {
     }
   } catch (err) {
     console.error("Admin IP update failed:", err);
-    return NextResponse.json({ error: "Couldn't save the change. Please try again." }, { status: 502 });
+    return NextResponse.json({ error: "Couldn't save the change. Please try again." , detail: err instanceof Error ? err.message : String(err) }, { status: 502 });
   }
 
   return NextResponse.json(await snapshot(request));
