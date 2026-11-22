@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import Logo from "@/components/Logo";
+import AdminMenuBar, { useIsAdmin } from "@/components/AdminMenuBar";
 
 const links = [
   { href: "/products", label: "Products" },
@@ -16,9 +17,11 @@ const links = [
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
+  const isAdmin = useIsAdmin();
 
   return (
     <header className="sticky top-0 z-50 border-b border-line bg-white/95 backdrop-blur-sm">
+      <AdminMenuBar isAdmin={isAdmin} />
       <nav className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-6 py-4">
         <Link href="/" className="shrink-0 text-navy" onClick={() => setOpen(false)}>
           <Logo idPrefix="nav" />
