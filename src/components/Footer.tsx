@@ -37,7 +37,7 @@ export default function Footer() {
                 </a>
               </li>
               <li>
-                <Link href="/contact" className="hover:text-white">
+                <Link href="/orders/new" className="hover:text-white">
                   Request a quote
                 </Link>
               </li>

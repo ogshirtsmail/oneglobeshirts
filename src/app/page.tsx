@@ -23,7 +23,7 @@ export default function Home() {
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link
-              href="/contact"
+              href="/orders/new"
               className="rounded-full bg-white px-6 py-3 text-center text-sm font-semibold text-navy transition-colors hover:bg-mist"
             >
               Request a Custom Quote
@@ -134,7 +134,7 @@ export default function Home() {
             take it from there.
           </p>
           <Link
-            href="/contact"
+            href="/orders/new"
             className="mt-8 inline-block rounded-full bg-white px-6 py-3 text-sm font-semibold text-navy transition-colors hover:bg-mist"
           >
             Request a Custom Quote

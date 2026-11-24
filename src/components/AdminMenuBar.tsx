@@ -7,6 +7,7 @@ const CACHE_KEY = "og-admin-check";
 const CACHE_MS = 10 * 60 * 1000; // re-check every 10 minutes
 
 export const adminLinks = [
+  { href: "/admin/orders", label: "Orders" },
   { href: "/design-collection/jerseys", label: "Manage designs" },
   { href: "/admin/upload", label: "Upload page" },
   { href: "/admin/access", label: "Admin IPs" },
