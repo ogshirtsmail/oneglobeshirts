@@ -27,6 +27,8 @@ import {
   inputCls,
 } from "./OrderParts";
 
+const DESIGN_TOOL_URL = "https://ogshirtsusa.com/design-your-shirt.html";
+
 export default function CustomerOrder({ orderNo, accessKey }: { orderNo: string; accessKey: string }) {
   const q = `?key=${encodeURIComponent(accessKey)}`;
   const base = `/api/orders/${encodeURIComponent(orderNo)}`;
@@ -172,7 +174,7 @@ function ActionCard({ bundle, act, filesEndpoint }: { bundle: OrderBundle; act: 
   const { busy, error, run } = useRun();
   const [note, setNote] = useState("");
   const [files, setFiles] = useState<OrderFileView[]>([]);
-  const [mode, setMode] = useState<"own" | "request" | null>(null);
+  const [mode, setMode] = useState<"own" | "request">("own");
   const [changes, setChanges] = useState(false);
   const ids = files.map((f) => f.id);
   const err = error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>;
@@ -220,7 +222,7 @@ function ActionCard({ bundle, act, filesEndpoint }: { bundle: OrderBundle; act: 
         <p>Choose how you'd like to create your design.</p>
         <div className="grid gap-3 sm:grid-cols-2">
           {[
-            { k: "own" as const, t: "Design Your Own Shirt", d: "Upload your design, logos and colors — or create one with our Design Your Shirt tool." },
+            { k: "own" as const, t: "Design Your Own Shirt", d: "Create your design with our Design Your Shirt tool, then upload it here. Already have a design? Upload it." },
             { k: "request" as const, t: "Request a Design", d: "Tell us your ideas and our designers will create the design for you." },
           ].map((c) => (
             <button
@@ -235,11 +237,26 @@ function ActionCard({ bundle, act, filesEndpoint }: { bundle: OrderBundle; act: 
           ))}
         </div>
         {mode === "own" && (
-          <div className="space-y-3">
-            <p className="text-slate">
-              Need a tool? <a href="/design-your-shirt.html" target="_blank" className="font-semibold text-brand">Open Design Your Shirt</a>, save your design, then upload it here.
-            </p>
-            <FileUploader endpoint={filesEndpoint} kind="own_design" label="Upload your design and logos" onChange={setFiles} />
+          <div className="space-y-4">
+            <ol className="space-y-3">
+              <li className="rounded-xl border border-brand/30 bg-brand/5 p-4">
+                <p className="font-bold text-navy">1. Design your shirt</p>
+                <p className="mt-1 text-slate">Open our Design Your Shirt tool in a new tab. Pick a shirt, colors, add your logo, names and numbers.</p>
+                <a href={DESIGN_TOOL_URL} target="_blank" rel="noopener" className={`${btnPrimary} mt-3`}>
+                  Open Design Your Shirt ↗
+                </a>
+              </li>
+              <li className="rounded-xl border border-line p-4">
+                <p className="font-bold text-navy">2. Download your design</p>
+                <p className="mt-1 text-slate">
+                  When you&apos;re happy, click <strong>Download front + back</strong> in the tool. The images are saved to your device.
+                </p>
+              </li>
+              <li className="rounded-xl border border-line p-4">
+                <p className="mb-3 font-bold text-navy">3. Upload your design here</p>
+                <FileUploader endpoint={filesEndpoint} kind="own_design" label="Upload your design images and logos" onChange={setFiles} />
+              </li>
+            </ol>
             <textarea className={inputCls} rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Colors, logo positions, names & numbers, anything else…" />
             {err}
             <button className={btnPrimary} disabled={busy || (!ids.length && !note.trim())} onClick={() => run(() => act("submit_own_design", { note, file_ids: ids }))}>
