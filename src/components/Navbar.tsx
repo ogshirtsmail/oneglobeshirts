@@ -41,7 +41,7 @@ export default function Navbar() {
         </ul>
 
         <Link
-          href="/contact"
+          href="/orders/new"
           className="hidden shrink-0 whitespace-nowrap rounded-full bg-brand px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-dark lg:inline-block"
         >
           Request a Quote
@@ -62,7 +62,7 @@ export default function Navbar() {
 
       {open && (
         <ul className="flex flex-col gap-1 border-t border-line px-6 py-4 lg:hidden">
-          {[...links, { href: "/contact", label: "Request a Quote" }].map((link) => (
+          {[...links, { href: "/orders/new", label: "Request a Quote" }].map((link) => (
             <li key={link.href}>
               <Link
                 href={link.href}

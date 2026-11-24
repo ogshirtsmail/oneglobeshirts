@@ -117,7 +117,7 @@ export default async function DesignCategoryPage({
               Reach out with your idea and we&apos;ll work with you directly.
             </p>
             <Link
-              href="/contact"
+              href="/orders/new"
               className="mt-6 inline-block rounded-full bg-brand px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-dark"
             >
               Request a Custom Quote

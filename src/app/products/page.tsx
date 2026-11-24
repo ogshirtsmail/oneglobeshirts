@@ -46,7 +46,7 @@ export default function ProductsPage() {
             ))}
           </ul>
           <Link
-            href="/contact"
+            href="/orders/new"
             className="mt-10 inline-block rounded-full bg-brand px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-dark"
           >
             Request a Custom Quote
