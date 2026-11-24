@@ -11,6 +11,14 @@
 
 export const ORDER_BUCKET = "order-files";
 
+/**
+ * While ORDERS_PUBLIC isn't "true", only admin IPs can start new online orders
+ * (everyone else gets the classic quote form). Set ORDERS_PUBLIC=true in Vercel to launch.
+ */
+export function ordersArePublic() {
+  return process.env.ORDERS_PUBLIC === "true";
+}
+
 export function isSupabaseConfigured() {
   return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
 }
