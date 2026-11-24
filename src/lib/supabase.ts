@@ -5,7 +5,8 @@
  *
  * Env vars (Vercel > Project > Settings > Environment Variables):
  *   SUPABASE_URL               https://<project-ref>.supabase.co
- *   SUPABASE_SERVICE_ROLE_KEY  service_role secret key (Project Settings > API)
+ *   SUPABASE_SERVICE_ROLE_KEY  a secret key (sb_secret_…) or the legacy service_role key
+ *                              (Supabase > Project Settings > API Keys)
  */
 
 export const ORDER_BUCKET = "order-files";
@@ -21,9 +22,11 @@ function base() {
   return { url: url.replace(/\/$/, ""), key };
 }
 
-function headers(extra: Record<string, string> = {}) {
+function headers(extra: Record<string, string> = {}): Record<string, string> {
   const { key } = base();
-  return { apikey: key, Authorization: `Bearer ${key}`, ...extra };
+  // New secret keys (sb_secret_…) are not JWTs: Supabase only accepts them in the `apikey`
+  // header and rejects them in `Authorization: Bearer`. Legacy service_role JWTs use both.
+  return key.startsWith("sb_") ? { apikey: key, ...extra } : { apikey: key, Authorization: `Bearer ${key}`, ...extra };
 }
 
 async function check(res: Response, what: string) {
