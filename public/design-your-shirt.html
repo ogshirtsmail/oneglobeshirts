@@ -47,8 +47,9 @@ input[type=number]{width:80px}
 #lp .rg{display:flex;align-items:center;gap:10px;margin:8px 0} #lp .rg label{width:64px;font-size:.9rem} #lp .rg input{flex:1}
 .chk{display:flex;gap:8px;align-items:center;font-size:.92rem;margin:8px 0}
 .final{margin-top:24px;text-align:center}
-.finals{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:14px 0}
-@media(max-width:560px){.finals{grid-template-columns:1fr}}
+.finals{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:14px 0}
+@media(max-width:860px){.finals{grid-template-columns:1fr 1fr}}
+.tabs{flex-wrap:wrap}
 .finals figcaption{font-weight:600;margin-top:6px} .finals figure{margin:0}
 </style>
 </head>
@@ -113,12 +114,14 @@ input[type=number]{width:80px}
 <!-- OG site menu: end -->
 <main class="wrap">
   <h1>Design your shirt</h1>
-  <p class="sub">Add as many logos as you need on the front and back, then check the finished design.</p>
+  <p class="sub">Add as many logos as you need on the front, back and both sides (sleeves), then check the finished design.</p>
 
   <div class="grid">
     <section class="panel" aria-label="Shirt editor">
       <div class="tabs">
         <button type="button" class="size" id="tabFront" aria-pressed="true">Front</button>
+        <button type="button" class="size" id="tabLeft" aria-pressed="false">Left side</button>
+        <button type="button" class="size" id="tabRight" aria-pressed="false">Right side</button>
         <button type="button" class="size" id="tabBack" aria-pressed="false">Back</button>
       </div>
       <div class="edwrap"><canvas id="ed" aria-label="Shirt editor"></canvas></div>
@@ -202,12 +205,16 @@ input[type=number]{width:80px}
     <p class="cap" id="cap"></p>
     <div class="finals">
       <figure><canvas id="cvFront" role="img" aria-label="Completed front"></canvas><figcaption>Front</figcaption></figure>
+      <figure><canvas id="cvLeft" role="img" aria-label="Completed left side"></canvas><figcaption>Left side</figcaption></figure>
+      <figure><canvas id="cvRight" role="img" aria-label="Completed right side"></canvas><figcaption>Right side</figcaption></figure>
       <figure><canvas id="cvBack" role="img" aria-label="Completed back"></canvas><figcaption>Back</figcaption></figure>
     </div>
     <div class="row" style="justify-content:center">
       <button type="button" class="dl" id="dlFront">Download front</button>
+      <button type="button" class="dl" id="dlLeft">Download left side</button>
+      <button type="button" class="dl" id="dlRight">Download right side</button>
       <button type="button" class="dl" id="dlBack">Download back</button>
-      <button type="button" class="dl" id="dlBoth">Download front + back</button>
+      <button type="button" class="dl" id="dlBoth">Download all views</button>
     </div>
   </section>
 </main>
@@ -229,7 +236,11 @@ const COLLARS=["Without collar","With collar"];
 const BUTTONS=["With buttons","Without buttons"];
 const RIBBONS=["Without ribbon","With ribbon"];
 const state={fit:"Men",ribbon:RIBBONS[0],ribbonColor:null,collar:COLLARS[0],buttons:BUTTONS[0],collarColor:null,side:"front",color:WHITE,sleeve:SLEEVES[0],fabric:FABRICS[0][0],size:null,sel:null,
-  sides:{front:{base:null,baseFile:null,logos:[]},back:{base:null,baseFile:null,logos:[]}}};
+  sides:{front:{base:null,baseFile:null,logos:[]},left:{base:null,baseFile:null,logos:[]},right:{base:null,baseFile:null,logos:[]},back:{base:null,baseFile:null,logos:[]}}};
+// Order of the views everywhere on the page: the two sides sit between front and back.
+const VIEWS=[["front","Front","cvFront"],["left","Left side","cvLeft"],["right","Right side","cvRight"],["back","Back","cvBack"]];
+const VIEW_NAME=Object.fromEntries(VIEWS.map(v=>[v[0],v[1]]));
+const isSideView=side=>side==="left"||side==="right";
 let uid=0;
 const cur=()=>state.sides[state.side];
 const selLogo=()=>cur().logos.find(l=>l.id===state.sel);
@@ -386,6 +397,69 @@ function drawRibbon(c){
   });
   c.restore();
 }
+// ---- Side views (left / right): the shirt seen from the side, with the sleeve in front ----
+// Drawn for the LEFT side (front of the shirt faces left); the right side is the mirror image.
+const SIDE_SHAPES={
+  "Men":  {bw:84,hem:440,taper:0},
+  "Women":{bw:74,hem:440,taper:10},
+  "Kids": {bw:72,hem:400,taper:0}
+};
+function sideGeo(){
+  const f=SIDE_SHAPES[state.fit],full=state.sleeve==="Full sleeve",cx=200;
+  const end=full?f.hem-36:Math.round(f.hem*.43);            // where the sleeve ends
+  const wb=full?36:62, wf=full?30:52;                         // half-widths of the sleeve end (back / front)
+  return {cx,bw:f.bw,hem:f.hem,taper:f.taper,end,
+    sleeve:{tf:[cx-48,80],tb:[cx+48,80],eb:[cx+wb,end],ef:[cx-wf,end+6]}};
+}
+function sideBodyD(){
+  const g=sideGeo(),x0=g.cx-g.bw,x1=g.cx+g.bw,t=g.taper,mid=Math.round(g.hem*.6);
+  return `M${g.cx-30} 44 Q${x0} 44 ${x0} 92 Q${x0+t} ${mid} ${x0+4} ${g.hem-8} Q${x0+4} ${g.hem} ${x0+14} ${g.hem} `+
+         `L${x1-14} ${g.hem} Q${x1-4} ${g.hem} ${x1-4} ${g.hem-8} Q${x1-t} ${mid} ${x1} 92 Q${x1} 36 ${g.cx+30} 32 Q${g.cx} 30 ${g.cx-30} 44 Z`;
+}
+function sideSleeveD(){
+  const g=sideGeo(),s=g.sleeve,P=p=>p[0]+" "+p[1];
+  return `M${P(s.tf)} Q${g.cx-40} 42 ${g.cx} 40 Q${g.cx+40} 40 ${P(s.tb)} L${P(s.eb)} Q${g.cx} ${g.end+10} ${P(s.ef)} Z`;
+}
+function drawSideView(c){
+  const g=sideGeo(),col=state.color[1],edge="rgba(0,0,0,.25)";
+  const v=state.fabric==="Sports jersey"&&state.collar==="Without collar";
+  c.save();c.lineJoin="round";c.lineCap="round";
+  // body (slightly darker so the sleeve stands out)
+  const body=new Path2D(sideBodyD());
+  c.fillStyle=shade(col,-.07);c.fill(body);c.strokeStyle=edge;c.lineWidth=2;c.stroke(body);
+  // neck opening: inside of the shirt, lower at the front (deeper for a V-neck jersey)
+  c.beginPath();c.moveTo(g.cx+30,32);c.quadraticCurveTo(g.cx,30,g.cx-30,44);
+  c.quadraticCurveTo(g.cx-6,v?74:54,g.cx+30,32);c.closePath();
+  c.fillStyle=shade(col,-.3);c.fill();c.strokeStyle=edge;c.lineWidth=1.5;c.stroke();
+  // side seam under the sleeve
+  c.beginPath();c.moveTo(g.cx+4,g.end);c.lineTo(g.cx+2,g.hem-2);
+  c.strokeStyle="rgba(0,0,0,.12)";c.lineWidth=1.5;c.setLineDash([4,4]);c.stroke();c.setLineDash([]);
+  // sleeve, with a soft shadow on the body
+  const sl=new Path2D(sideSleeveD());
+  c.save();c.shadowColor="rgba(0,0,0,.18)";c.shadowBlur=8;c.shadowOffsetX=2;c.shadowOffsetY=3;
+  c.fillStyle=col;c.fill(sl);c.restore();
+  c.strokeStyle=edge;c.lineWidth=2;c.stroke(sl);
+  // shoulder seam
+  c.beginPath();c.moveTo(g.sleeve.tf[0]+4,g.sleeve.tf[1]-6);c.quadraticCurveTo(g.cx,30,g.sleeve.tb[0]-4,g.sleeve.tb[1]-6);
+  c.strokeStyle="rgba(0,0,0,.14)";c.lineWidth=1.2;c.setLineDash([3,3]);c.stroke();c.setLineDash([]);
+  // ribbon round the end of the sleeve
+  if(state.ribbon==="With ribbon"){
+    const s=g.sleeve,B=14,mv=(a,b)=>{const dx=b[0]-a[0],dy=b[1]-a[1],n=Math.hypot(dx,dy);return[a[0]+dx/n*B,a[1]+dy/n*B];};
+    const eb2=mv(s.eb,s.tb),ef2=mv(s.ef,s.tf);
+    c.beginPath();c.moveTo(...s.ef);c.quadraticCurveTo(g.cx,g.end+10,...s.eb);c.lineTo(...eb2);c.quadraticCurveTo(g.cx,g.end+10-B,...ef2);c.closePath();
+    c.fillStyle=state.ribbonColor[1];c.fill();c.strokeStyle="rgba(0,0,0,.35)";c.lineWidth=1.5;c.stroke();
+  }
+  // collar seen from the side: stand round the neck and the point folding down at the front
+  if(state.collar==="With collar"){
+    const cc=state.collarColor?state.collarColor[1]:col;
+    c.beginPath();c.moveTo(g.cx+34,34);c.quadraticCurveTo(g.cx,18,g.cx-30,40);c.lineTo(g.cx-44,64);
+    c.quadraticCurveTo(g.cx-8,40,g.cx+38,50);c.closePath();
+    c.fillStyle=cc;c.fill();c.strokeStyle="rgba(0,0,0,.38)";c.lineWidth=2;c.stroke();
+    c.beginPath();c.moveTo(g.cx+32,42);c.quadraticCurveTo(g.cx-4,32,g.cx-34,50);
+    c.strokeStyle="rgba(0,0,0,.22)";c.lineWidth=1;c.setLineDash([3,3]);c.stroke();c.setLineDash([]);
+  }
+  c.restore();
+}
 function drawSide(cv,side,scale,editor){
   cv.width=W*scale;cv.height=H*scale;
   const c=cv.getContext("2d");c.setTransform(scale,0,0,scale,0,0);
@@ -393,6 +467,9 @@ function drawSide(cv,side,scale,editor){
   if(S.base){
     const k=Math.min(W/S.base.naturalWidth,H/S.base.naturalHeight),w=S.base.naturalWidth*k,h=S.base.naturalHeight*k;
     c.drawImage(S.base,(W-w)/2,(H-h)/2,w,h);
+  }else if(isSideView(side)){
+    c.save();if(side==="right"){c.translate(W,0);c.scale(-1,1);}
+    drawSideView(c);c.restore();
   }else{
     const p=new Path2D(shirtD(side));
     c.fillStyle=state.color[1];c.fill(p);
@@ -410,17 +487,27 @@ function drawSide(cv,side,scale,editor){
 }
 function renderAll(){
   drawSide($("ed"),state.side,2,true);
-  drawSide($("cvFront"),"front",1.5);drawSide($("cvBack"),"back",1.5);
-  const f=state.sides.front.logos.length,b=state.sides.back.logos.length;
-  $("cap").textContent=`${state.fit} · ${state.color[0]} ${state.fabric.toLowerCase()} ${state.sleeve.toLowerCase()}${state.collar==="With collar"?" · collar: "+(state.collarColor?state.collarColor[0]:"matches shirt")+" · "+state.buttons.toLowerCase():" · no collar"}${state.ribbon==="With ribbon"?" · "+state.ribbonColor[0].toLowerCase()+" sleeve ribbon":""} · Size ${state.size||"not chosen yet"} · Qty ${$("qty").value} · ${f} logo${f===1?"":"s"} on front, ${b} on back`;
-  $("submit").disabled=!(state.size&&(f+b));
+  VIEWS.forEach(([side,,id])=>drawSide($(id),side,1.5));
+  const n=side=>state.sides[side].logos.length,f=n("front"),b=n("back"),lf=n("left"),rt=n("right");
+  $("cap").textContent=`${state.fit} · ${state.color[0]} ${state.fabric.toLowerCase()} ${state.sleeve.toLowerCase()}${state.collar==="With collar"?" · collar: "+(state.collarColor?state.collarColor[0]:"matches shirt")+" · "+state.buttons.toLowerCase():" · no collar"}${state.ribbon==="With ribbon"?" · "+state.ribbonColor[0].toLowerCase()+" sleeve ribbon":""} · Size ${state.size||"not chosen yet"} · Qty ${$("qty").value} · ${f} logo${f===1?"":"s"} on front, ${lf} on left side, ${rt} on right side, ${b} on back`;
+  $("submit").disabled=!(state.size&&(f+b+lf+rt));
 }
 
 // ---- Logos ----
 const PRESETS=[["Upper left",37,27],["Upper right",63,27],["Top center",50,24],["Center",50,45],["Lower center",50,72]];
-PRESETS.forEach(([n,x,y])=>{const b=document.createElement("button");b.type="button";b.className="dl";b.style.padding="6px 10px";b.textContent=n;
-  b.onclick=()=>{const l=selLogo();if(l){l.x=x;l.y=y;renderAll();}};$("presets").appendChild(b);});
+// Positions for the side views (left / right): mostly on the sleeve
+function sidePresets(){
+  const g=sideGeo(),sy=v=>Math.round(v/H*100);
+  return [["Sleeve top",50,sy(70)],["Sleeve middle",50,sy((40+g.end)/2)],["Sleeve end",50,sy(g.end-24)],["Side of body",50,sy(g.hem-70)]];
+}
+function buildPresets(){
+  const box=$("presets");box.innerHTML="";
+  (isSideView(state.side)?sidePresets():PRESETS).forEach(([n,x,y])=>{const b=document.createElement("button");b.type="button";b.className="dl";b.style.padding="6px 10px";b.textContent=n;
+    b.onclick=()=>{const l=selLogo();if(l){l.x=x;l.y=y;renderAll();}};box.appendChild(b);});
+}
+buildPresets();
 const AUTO=[[63,27],[37,27],[50,48],[50,72],[50,24],[28,45],[72,45],[28,72],[72,72],[50,36]];
+const AUTO_SIDE=[[50,22],[50,32],[50,82],[50,16],[50,40],[50,70],[50,60],[50,50],[50,90],[50,27]];
 async function addLogos(files){
   $("err").textContent="";
   for(const file of files){
@@ -428,8 +515,8 @@ async function addLogos(files){
     if(S.logos.length>=MAX_LOGOS){$("err").textContent=`You can add up to ${MAX_LOGOS} logos per side.`;break;}
     if(file.size>MAX_MB*1024*1024){$("err").textContent=`"${file.name}" is too large. Maximum is ${MAX_MB} MB.`;continue;}
     let img;try{img=await toImage(file);}catch(e){fail(file);continue;}
-    const [x,y]=AUTO[S.logos.length%AUTO.length];
-    S.logos.push({id:++uid,name:file.name,file,orig:img,img,x,y,w:22,rot:0,bg:false,tol:45,out:null});
+    const side=isSideView(state.side),A=side?AUTO_SIDE:AUTO,[x,y]=A[S.logos.length%A.length];
+    S.logos.push({id:++uid,name:file.name,file,orig:img,img,x,y,w:side?15:22,rot:0,bg:false,tol:45,out:null});
     state.sel=uid;
   }
   $("fLogos").value="";refresh();
@@ -504,14 +591,16 @@ $("fBase").onchange=async e=>{
 $("rBase").onclick=()=>{const S=cur();S.base=null;S.baseFile=null;$("fBase").value="";syncBase();renderAll();};
 function syncBase(){const S=cur();$("baseName").textContent=S.baseFile?"Using: "+S.baseFile.name:"Using the built-in shirt";$("rBase").style.display=S.baseFile?"":"none";}
 
-// ---- Front / back tabs ----
+// ---- Front / left side / right side / back tabs ----
+const TABS={front:"tabFront",left:"tabLeft",right:"tabRight",back:"tabBack"};
 function setSide(side){
   state.side=side;state.sel=null;$("err").textContent="";
-  $("tabFront").setAttribute("aria-pressed",side==="front");$("tabBack").setAttribute("aria-pressed",side==="back");
-  document.querySelectorAll(".sideName").forEach(n=>n.textContent=side);
+  Object.entries(TABS).forEach(([k,id])=>$(id).setAttribute("aria-pressed",k===side));
+  document.querySelectorAll(".sideName").forEach(n=>n.textContent=VIEW_NAME[side].toLowerCase());
+  buildPresets();
   $("fBase").value="";syncBase();refresh();
 }
-$("tabFront").onclick=()=>setSide("front");$("tabBack").onclick=()=>setSide("back");
+Object.entries(TABS).forEach(([k,id])=>$(id).onclick=()=>setSide(k));
 
 // ---- Options ----
 function pills(id,items,key,after){
@@ -566,7 +655,7 @@ COLORS.forEach(([name,hex])=>{
 $("ribbonCustom").oninput=e=>setRibbonColor(["Custom "+e.target.value,e.target.value]);
 state.ribbonColor=COLORS[1];
 pills("ribbonMode",RIBBONS,"ribbon",()=>{$("ribbonBox").style.display=state.ribbon==="With ribbon"?"block":"none";});
-pills("sleeves",SLEEVES,"sleeve");
+pills("sleeves",SLEEVES,"sleeve",buildPresets);
 pills("fabrics",FABRICS,"fabric",()=>{$("fabNote").textContent=FABRICS.find(f=>f[0]===state.fabric)[1];});
 $("fabNote").textContent=FABRICS[0][1];
 function buildSizes(){
@@ -574,7 +663,7 @@ function buildSizes(){
   if(!SIZES[state.fit].includes(state.size))state.size=null;
   pills("sizes",SIZES[state.fit],"size");
 }
-pills("fits",FITS,"fit",buildSizes);
+pills("fits",FITS,"fit",()=>{buildSizes();buildPresets();});
 buildSizes();
 $("qty").oninput=renderAll;
 
@@ -591,10 +680,13 @@ $("sample").onclick=()=>{
 // ---- Downloads ----
 const save=(cv,name)=>cv.toBlob(b=>{const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;a.click();});
 $("dlFront").onclick=()=>save($("cvFront"),"shirt-front.png");
+$("dlLeft").onclick=()=>save($("cvLeft"),"shirt-left-side.png");
+$("dlRight").onclick=()=>save($("cvRight"),"shirt-right-side.png");
 $("dlBack").onclick=()=>save($("cvBack"),"shirt-back.png");
 $("dlBoth").onclick=()=>{
-  const f=$("cvFront"),b=$("cvBack"),c=document.createElement("canvas");c.width=f.width+b.width;c.height=Math.max(f.height,b.height);
-  const x=c.getContext("2d");x.drawImage(f,0,0);x.drawImage(b,f.width,0);save(c,"shirt-front-back.png");
+  const cvs=VIEWS.map(v=>$(v[2])),c=document.createElement("canvas");
+  c.width=cvs.reduce((a,v)=>a+v.width,0);c.height=Math.max(...cvs.map(v=>v.height));
+  const x=c.getContext("2d");let at=0;cvs.forEach(v=>{x.drawImage(v,at,0);at+=v.width;});save(c,"shirt-all-views.png");
 };
 
 // ---- Order ----
@@ -603,16 +695,16 @@ $("submit").onclick=async()=>{
   data.append("fit",state.fit);data.append("size",state.size);data.append("sleeve",state.sleeve);data.append("fabric",state.fabric);data.append("collar",state.collar);data.append("sleeve_ribbon",state.ribbon==="With ribbon"?state.ribbonColor[0]+" "+state.ribbonColor[1]:"none");data.append("buttons",state.collar==="With collar"?state.buttons:"none");data.append("collar_colour",state.collar==="With collar"?(state.collarColor?state.collarColor[0]+" "+state.collarColor[1]:"matches shirt"):"none");data.append("color",state.color[0]);data.append("color_hex",state.color[1]);
   data.append("quantity",$("qty").value);data.append("name",$("name").value);data.append("email",$("email").value);
   const lines=[];
-  for(const side of ["front","back"]){
+  for(const [side] of VIEWS){
     const S=state.sides[side];
     if(S.baseFile)data.append(side+"_shirt_image",S.baseFile);
     S.logos.forEach((l,i)=>{
       data.append(`${side}_logo_${i+1}`,l.file);
       data.append(`${side}_logo_${i+1}_placement`,JSON.stringify({x:l.x,y:l.y,width:l.w,rotation:l.rot,background_removed:l.bg}));
     });
-    lines.push(`${side[0].toUpperCase()+side.slice(1)}: ${S.logos.length} logo${S.logos.length===1?"":"s"}${S.baseFile?" on your shirt image":""}`);
+    lines.push(`${VIEW_NAME[side]}: ${S.logos.length} logo${S.logos.length===1?"":"s"}${S.baseFile?" on your shirt image":""}`);
   }
-  for(const [k,id] of [["front","cvFront"],["back","cvBack"]]){
+  for(const [k,,id] of VIEWS){
     const b=await new Promise(r=>$(id).toBlob(r));if(b)data.append(k+"_preview",b,k+"-preview.png");
   }
   const sum=`For: ${state.fit}\nType: ${state.sleeve}\nFabric: ${state.fabric}\nCollar: ${state.collar==="With collar"?"Yes, "+(state.collarColor?state.collarColor[0]:"matches shirt"):"No"}\n${state.collar==="With collar"?"Buttons: "+(state.buttons==="With buttons"?"Yes":"No")+"\n":""}Sleeve ribbon: ${state.ribbon==="With ribbon"?state.ribbonColor[0]:"No"}\nColour: ${state.color[0]}\nSize: ${state.size}\nQuantity: ${$("qty").value}\n`+lines.join("\n");
