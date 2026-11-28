@@ -124,6 +124,15 @@
   .players select.p-size.empty{color:var(--muted);font-weight:400}
   .players select.p-size option{color:var(--ink);font-weight:400}
   #playerError.show{display:block}
+  .player-import{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#f7f8fb;border:1px dashed var(--line);border-radius:10px;padding:10px 12px;margin:0 0 14px}
+  .player-import .pi-text{flex:1 1 220px;font-size:14px;color:var(--muted)}
+  .player-import .pi-text strong{color:var(--ink)}
+  .player-import .pi-btns{display:flex;gap:8px;flex-wrap:wrap}
+  .import-msg{display:none;margin:0 0 12px;padding:10px 12px;border-radius:8px;font-size:14px;background:#eefaf1;border:1px solid #b7e4c4;color:#1d6b35}
+  .import-msg.show{display:block}
+  .import-msg.warn{background:#fff8ec;border-color:#f3d29b;color:#8a5300}
+  .import-msg.err{background:#fff5f5;border-color:#f3b8b8;color:#a01d1d}
+  .import-msg ul{margin:6px 0 0;padding-left:20px}
   .player-note{font-size:13px;color:var(--muted)}
   .player-note.warn{color:#b26a00}
   @media(max-width:560px){
@@ -336,6 +345,15 @@
   <section class="card" id="sec-players">
     <h2><span class="num">5</span>Player details <span class="opt">(optional)</span></h2>
     <p class="hint">Add a name, size and number for each player (up to 30). Leave this blank if you don't need names or numbers printed.</p>
+    <div class="player-import">
+      <span class="pi-text"><strong>Have a team list?</strong> Download the Excel template, fill in Player name, Size and Number, then upload it here.</span>
+      <span class="pi-btns">
+        <button type="button" class="btn-small" id="playerTemplateBtn">⬇ Download Excel template</button>
+        <button type="button" class="btn-small" id="playerUploadBtn">⬆ Upload player list</button>
+        <input type="file" id="playerFile" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" hidden>
+      </span>
+    </div>
+    <div class="import-msg" id="playerImportMsg" role="status" aria-live="polite"></div>
     <table class="players">
       <thead><tr><th>#</th><th>Player name</th><th>Size</th><th>Number</th><th></th></tr></thead>
       <tbody id="playerRows"></tbody>
@@ -698,6 +716,239 @@
     updateTotal();
   });
   resetPlayers();
+
+  // ---------- Player list: Excel template + upload ----------
+  const KID_AGES = {};   // "7-8" -> "K-M"
+  SIZE_GROUPS[2].sizes.forEach(z => { const m = z.age.match(/(\d+)\D+(\d+)/); if (m) KID_AGES[m[1] + "-" + m[2]] = "K-" + z.s; });
+  const TEMPLATE_SIZE_LABELS = SIZES.map(c => SIZE_INFO[c].label);   // e.g. "Male S", "Kids M (7–8 yrs)"
+
+  // Turns whatever the customer typed ("Mens XL", "Kids M (7-8 yrs)", "Youth 9-10", "F-L", "2XL") into a size code.
+  // Returns { code, assumed } or null if it can't be understood.
+  function parseSize(raw){
+    let t = String(raw || "").toLowerCase().replace(/[–—]/g, "-").replace(/’/g, "'").trim();
+    if (!t) return null;
+    let m = t.match(/^([mfk])\s*-\s*(xs|s|m|l|xl|xxl|2xl)$/);
+    if (m){ const c = m[1].toUpperCase() + "-" + (m[2] === "2xl" ? "XXL" : m[2].toUpperCase()); return SIZE_INFO[c] ? { code:c } : null; }
+    const age = t.match(/(\d{1,2})\s*-\s*(\d{1,2})/);
+    const kidByAge = age ? KID_AGES[age[1] + "-" + age[2]] : null;
+    t = t.replace(/\(.*?\)/g, " ").replace(/\d{1,2}\s*-\s*\d{1,2}\s*(yrs?|years?|y)?/g, " ");
+    let group = null;
+    if (/\b(kids?|youth|child(ren)?|boys?|girls?|junior|jr)\b/.test(t)) group = "K";
+    else if (/\b(female|women'?s?|womens|ladies|lady|woman)\b/.test(t)) group = "F";
+    else if (/\b(male|men'?s?|mens|man|adult|unisex)\b/.test(t)) group = "M";
+    t = t.replace(/\b(kids?|youth|child(ren)?|boys?|girls?|junior|jr|female|women'?s?|womens|ladies|lady|woman|male|men'?s?|mens|man|adult|unisex|size)\b/g, " ")
+         .replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+    const WORDS = { "small":"S", "medium":"M", "med":"M", "large":"L", "x large":"XL", "extra large":"XL", "xlarge":"XL",
+                    "xx large":"XXL", "2x large":"XXL", "2xl":"XXL", "xxl":"XXL", "2x":"XXL", "xl":"XL", "l":"L", "m":"M", "s":"S", "xs":"XS",
+                    "x small":"XS", "extra small":"XS", "xsmall":"XS" };
+    const sz = WORDS[t] || null;
+    if (!sz){
+      if (!t && kidByAge) return { code: kidByAge };
+      return null;
+    }
+    if (!group && kidByAge) return { code: kidByAge };
+    let assumed = false;
+    if (!group){ group = sz === "XS" ? "K" : "M"; assumed = true; }
+    const code = group + "-" + sz;
+    return SIZE_INFO[code] ? { code, assumed } : null;
+  }
+
+  function cellText(v){
+    if (v === null || v === undefined) return "";
+    if (v instanceof Date) return v.toLocaleDateString();
+    if (typeof v === "object"){
+      if (Array.isArray(v.richText)) return v.richText.map(r => r.text).join("");
+      if (v.text !== undefined) return cellText(v.text);
+      if (v.result !== undefined) return cellText(v.result);
+      if (v.error) return "";
+      return "";
+    }
+    return String(v);
+  }
+
+  function parseCSV(text){
+    const rows = []; let row = [], cur = "", q = false;
+    text = text.replace(/^﻿/, "");
+    for (let i = 0; i < text.length; i++){
+      const ch = text[i];
+      if (q){
+        if (ch === '"'){ if (text[i+1] === '"'){ cur += '"'; i++; } else q = false; }
+        else cur += ch;
+      } else if (ch === '"') q = true;
+      else if (ch === "," || ch === ";" || ch === "\t"){ row.push(cur); cur = ""; }
+      else if (ch === "\n" || ch === "\r"){
+        if (ch === "\r" && text[i+1] === "\n") i++;
+        row.push(cur); rows.push(row); row = []; cur = "";
+      } else cur += ch;
+    }
+    if (cur || row.length){ row.push(cur); rows.push(row); }
+    return rows;
+  }
+
+  async function readSheetRows(file){
+    const name = file.name.toLowerCase();
+    if (name.endsWith(".csv")) return parseCSV(await file.text());
+    if (name.endsWith(".xls")) throw new Error("Old .xls files can't be read. In Excel choose File › Save As › “Excel Workbook (.xlsx)” and upload that file.");
+    if (typeof ExcelJS === "undefined") throw new Error("The Excel library didn't load. Please check your internet connection and try again.");
+    const wb = new ExcelJS.Workbook();
+    try { await wb.xlsx.load(await file.arrayBuffer()); }
+    catch(e){ throw new Error("This file couldn't be opened as an Excel workbook (.xlsx). Try the template, or save your file as .xlsx or .csv."); }
+    const ws = wb.getWorksheet("Players") || wb.worksheets.find(w => w.state !== "hidden" && w.actualRowCount) || wb.worksheets[0];
+    if (!ws) return [];
+    const rows = [];
+    ws.eachRow({ includeEmpty:true }, (r, n) => {
+      const vals = [];
+      for (let c = 1; c <= Math.max(r.cellCount, 3); c++) vals.push(cellText(r.getCell(c).value).trim());
+      rows[n - 1] = vals;
+    });
+    return Array.from(rows, r => r || []);
+  }
+
+  // Works out which columns hold name / size / number. Falls back to A, B, C.
+  function mapColumns(rows){
+    for (let i = 0; i < Math.min(rows.length, 10); i++){
+      const r = (rows[i] || []).map(x => String(x || "").toLowerCase().trim());
+      const sizeCol = r.findIndex(x => /\bsize\b/.test(x));
+      if (sizeCol < 0) continue;
+      let nameCol = r.findIndex(x => /name|player/.test(x));
+      let numCol = r.findIndex((x, j) => j !== sizeCol && j !== nameCol && /num|^no\.?$|^#$|jersey/.test(x));
+      if (nameCol < 0 && numCol < 0) continue;
+      return { start: i + 1, name: nameCol, size: sizeCol, num: numCol };
+    }
+    return { start: 0, name: 0, size: 1, num: 2 };
+  }
+
+  function showImportMsg(kind, html){
+    const box = document.getElementById("playerImportMsg");
+    box.className = "import-msg show" + (kind ? " " + kind : "");
+    box.innerHTML = html;
+  }
+  function hideImportMsg(){ const b = document.getElementById("playerImportMsg"); b.className = "import-msg"; b.innerHTML = ""; }
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+
+  async function importPlayers(file){
+    hideImportMsg();
+    let rows;
+    try { rows = await readSheetRows(file); }
+    catch(e){ showImportMsg("err", esc(e.message)); return; }
+    const col = mapColumns(rows);
+    const list = [], issues = [];
+    let assumedAdult = 0;
+    for (let i = col.start; i < rows.length; i++){
+      const r = rows[i] || [];
+      const get = c => (c >= 0 && r[c] !== undefined) ? String(r[c]).trim() : "";
+      let name = get(col.name), sizeRaw = get(col.size), num = get(col.num);
+      if (!name && !sizeRaw && !num) continue;
+      const line = "Row " + (i + 1) + (name ? " (" + name + ")" : "");
+      if (name.length > 30){ issues.push(line + ": name shortened to 30 characters."); name = name.slice(0, 30); }
+      const numDigits = num.replace(/\.0+$/, "").replace(/\D/g, "");
+      if (num && numDigits !== num.replace(/\.0+$/, "")) issues.push(line + ": number “" + num + "” changed to “" + (numDigits.slice(0, 3) || "blank") + "” (digits only).");
+      else if (numDigits.length > 3) issues.push(line + ": number shortened to 3 digits.");
+      num = numDigits.slice(0, 3);
+      let size = "";
+      if (sizeRaw){
+        const ps = parseSize(sizeRaw);
+        if (ps){ size = ps.code; if (ps.assumed) assumedAdult++; }
+        else issues.push(line + ": size “" + sizeRaw + "” wasn't recognised — please pick it from the list.");
+      } else issues.push(line + ": no size given — please pick one.");
+      list.push({ name, size, number: num, bad: !size });
+    }
+    if (!list.length){
+      showImportMsg("err", "No players were found in <strong>" + esc(file.name) + "</strong>. Put the details under the headings <strong>Player name</strong>, <strong>Size</strong> and <strong>Number</strong> (the template already has them).");
+      return;
+    }
+    let skipped = 0;
+    if (list.length > MAX_PLAYERS){ skipped = list.length - MAX_PLAYERS; list.length = MAX_PLAYERS; }
+
+    const existing = getPlayers().length;
+    if (existing && !confirm("Replace the " + existing + " player" + (existing > 1 ? "s" : "") + " already entered with the " + list.length + " from “" + file.name + "”?")) return;
+
+    playerBody.innerHTML = "";
+    list.forEach(p => {
+      addPlayerRow(false, p);
+      if (p.bad) playerBody.rows[playerBody.rows.length - 1].classList.add("bad");
+    });
+    document.getElementById("playerError").classList.remove("show");
+    document.getElementById("sec-players").classList.remove("invalid");
+    updatePlayerNote();
+    saveDraft();
+
+    let msg = "✓ Added <strong>" + list.length + " player" + (list.length > 1 ? "s" : "") + "</strong> from " + esc(file.name) + ". Check the list below, then use “Use player sizes for quantities” to fill step 3.";
+    const notes = [];
+    if (skipped) notes.push(skipped + " more row" + (skipped > 1 ? "s were" : " was") + " left out — the limit is " + MAX_PLAYERS + " players.");
+    if (assumedAdult) notes.push(assumedAdult + " size" + (assumedAdult > 1 ? "s" : "") + " didn't say Male, Female or Kids, so Male was used — please check.");
+    const all = notes.concat(issues);
+    if (all.length){
+      const shown = all.slice(0, 8).map(x => "<li>" + esc(x) + "</li>").join("");
+      msg += "<ul>" + shown + (all.length > 8 ? "<li>…and " + (all.length - 8) + " more.</li>" : "") + "</ul>";
+    }
+    showImportMsg(all.length ? "warn" : "", msg);
+  }
+
+  async function downloadPlayerTemplate(btn){
+    if (typeof ExcelJS === "undefined"){ alert("The Excel library didn't load. Please check your internet connection and try again."); return; }
+    const label = btn.textContent;
+    btn.disabled = true; btn.textContent = "Preparing…";
+    try {
+      const wb = new ExcelJS.Workbook();
+      wb.creator = "OG Shirts";
+      const ws = wb.addWorksheet("Players", { views:[{ state:"frozen", ySplit:1 }] });
+      ws.columns = [{ header:"Player name", key:"name", width:32 }, { header:"Size", key:"size", width:24 }, { header:"Number", key:"num", width:12 }];
+      const head = ws.getRow(1);
+      head.height = 22;
+      head.eachCell(c => { c.font = { bold:true, color:{ argb:"FFFFFFFF" } }; c.fill = HEADER_FILL; c.border = BORDER; c.alignment = { vertical:"middle" }; });
+      const sizes = wb.addWorksheet("Sizes");
+      sizes.columns = [{ header:"Valid sizes (pick from the dropdown)", width:36 }];
+      sizes.getCell("A1").font = { bold:true, color:{ argb:"FFFFFFFF" } }; sizes.getCell("A1").fill = ACCENT_FILL;
+      TEMPLATE_SIZE_LABELS.forEach((l, i) => { sizes.getCell(i + 2, 1).value = l; });
+      const listRef = "Sizes!$A$2:$A$" + (TEMPLATE_SIZE_LABELS.length + 1);
+      for (let r = 2; r <= MAX_PLAYERS + 1; r++){
+        ws.getCell(r, 1).dataValidation = { type:"textLength", operator:"lessThanOrEqual", formulae:[30], allowBlank:true, showErrorMessage:true,
+          errorTitle:"Name too long", error:"Names can be up to 30 characters." };
+        ws.getCell(r, 2).dataValidation = { type:"list", allowBlank:true, formulae:[listRef], showErrorMessage:true,
+          errorStyle:"warning", errorTitle:"Size", error:"Please choose a size from the list." };
+        ws.getCell(r, 3).numFmt = "@";
+        ws.getCell(r, 3).dataValidation = { type:"textLength", operator:"lessThanOrEqual", formulae:[3], allowBlank:true, showErrorMessage:true,
+          errorTitle:"Number", error:"Numbers can be up to 3 digits." };
+        for (let c = 1; c <= 3; c++) ws.getCell(r, c).border = BORDER;
+      }
+      const info = wb.addWorksheet("How to use");
+      info.getColumn(1).width = 90;
+      const lines = [
+        ["OG Shirts – player list template", { bold:true, size:14, color:{ argb:"FFE4572E" } }],
+        [""],
+        ["1. Go to the “Players” sheet and fill in one player per row (up to " + MAX_PLAYERS + " players)."],
+        ["2. Player name: the name to print on the shirt (up to 30 characters). Leave blank if you only need a number."],
+        ["3. Size: pick from the dropdown, e.g. “Male L”, “Female M” or “Kids S (5–6 yrs)”."],
+        ["4. Number: the shirt number, digits only (up to 3), e.g. 7 or 07."],
+        ["5. Save the file, then click “Upload player list” on the order form."],
+        [""],
+        ["Example:  Alex Smith  |  Male L  |  10", { italic:true, color:{ argb:"FF5B6678" } }]
+      ];
+      lines.forEach((l, i) => { const c = info.getCell(i + 1, 1); c.value = l[0]; if (l[1]) c.font = l[1]; });
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], { type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "OG_Shirts_Player_List_Template.xlsx";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    } catch(e){
+      alert("Sorry, the template couldn't be created: " + e.message);
+    } finally {
+      btn.disabled = false; btn.textContent = label;
+    }
+  }
+
+  const playerFile = document.getElementById("playerFile");
+  document.getElementById("playerTemplateBtn").addEventListener("click", e => downloadPlayerTemplate(e.currentTarget));
+  document.getElementById("playerUploadBtn").addEventListener("click", () => playerFile.click());
+  playerFile.addEventListener("change", e => {
+    e.stopPropagation();
+    const f = playerFile.files && playerFile.files[0];
+    playerFile.value = "";
+    if (f) importPlayers(f);
+  });
 
   // ---------- adidas US size charts (body measurements, inches) ----------
   const ADIDAS_KIDS_SRC = "adidas infants', toddlers' & kids' apparel size chart (Scheels)";
@@ -1394,6 +1645,7 @@
     uploads.front = []; uploads.back = []; uploads.design = []; uploads.position = []; uploads.sizechart = [];
     ["front","back","design","position","sizechart"].forEach(renderPreviews);
     resetPlayers();
+    hideImportMsg();
     updateTotal();
     setStatus("");
     window.scrollTo({top:0, behavior:"smooth"});
