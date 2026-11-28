@@ -50,6 +50,16 @@ input[type=number]{width:80px}
 .finals{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:14px 0}
 @media(max-width:860px){.finals{grid-template-columns:1fr 1fr}}
 .tabs{flex-wrap:wrap}
+.sizebar{display:flex;align-items:center;gap:8px;justify-content:center;flex-wrap:wrap;min-height:44px;margin:0 0 10px;padding:6px 10px;border:1px solid var(--accent);border-radius:10px;background:rgba(31,79,216,.07)}
+.sizebar[hidden]{display:none}
+.sizebar .sb-name{font-size:.9rem;font-weight:600;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sizebar button{width:36px;height:36px;border-radius:50%;border:1px solid var(--accent);background:var(--card);color:var(--accent);font:600 1.3rem/1 system-ui,sans-serif;cursor:pointer;padding:0}
+.sizebar button:hover{background:var(--accent);color:var(--accent-ink)}
+.sizebar button:disabled{opacity:.4;cursor:not-allowed;background:var(--card);color:var(--accent)}
+.sizebar input[type=range]{width:130px}
+.sizebar .sb-pct{font-size:.9rem;min-width:3.2em;text-align:right;color:var(--mute)}
+.sb-hint{text-align:center;color:var(--mute);font-size:.85rem;min-height:44px;margin:0 0 10px;display:flex;align-items:center;justify-content:center}
+.sb-hint[hidden]{display:none}
 .finals figcaption{font-weight:600;margin-top:6px} .finals figure{margin:0}
 </style>
 </head>
@@ -124,6 +134,14 @@ input[type=number]{width:80px}
         <button type="button" class="size" id="tabRight" aria-pressed="false">Right side</button>
         <button type="button" class="size" id="tabBack" aria-pressed="false">Back</button>
       </div>
+      <div class="sizebar" id="sizeBar" role="group" aria-label="Logo size" hidden>
+        <span class="sb-name" id="sbName"></span>
+        <button type="button" id="sbMinus" title="Make the logo smaller" aria-label="Make the logo smaller">−</button>
+        <input type="range" id="sbRange" min="5" max="100" aria-label="Logo size">
+        <button type="button" id="sbPlus" title="Make the logo bigger" aria-label="Make the logo bigger">+</button>
+        <span class="sb-pct" id="sbPct"></span>
+      </div>
+      <p class="sb-hint" id="sbHint">Click a logo on the shirt to change its size.</p>
       <div class="edwrap"><canvas id="ed" aria-label="Shirt editor"></canvas></div>
       <p class="hint">Click a logo to select it, drag to move it. You can also drop images onto the shirt.</p>
     </section>
@@ -533,7 +551,19 @@ function renderList(){
   });
   $("count").textContent=`(${cur().logos.length} of ${MAX_LOGOS})`;
 }
+function syncSizeBar(){
+  const l=selLogo();
+  $("sizeBar").hidden=!l;$("sbHint").hidden=!!l||!cur().logos.length;
+  if(!l)return;
+  $("sbName").textContent=l.name;$("sbRange").value=l.w;$("sbPct").textContent=Math.round(l.w)+"%";
+  $("sbMinus").disabled=l.w<=5;$("sbPlus").disabled=l.w>=100;
+}
+function setLogoSize(w){
+  const l=selLogo();if(!l)return;
+  l.w=clamp(Math.round(w),5,100);$("lSize").value=l.w;syncSizeBar();renderAll();
+}
 function syncPanel(){
+  syncSizeBar();
   const l=selLogo();$("lp").style.display=l?"block":"none";if(!l)return;
   $("lSize").value=l.w;$("lRot").value=l.rot;$("lBg").checked=l.bg;$("lTol").value=l.tol;$("tolRow").style.display=l.bg?"flex":"none";
 }
@@ -551,7 +581,17 @@ async function reprocess(l){
   refresh();
 }
 let tolTimer;
-$("lSize").oninput=e=>{const l=selLogo();if(l){l.w=+e.target.value;renderAll();}};
+$("lSize").oninput=e=>setLogoSize(+e.target.value);
+$("sbRange").oninput=e=>setLogoSize(+e.target.value);
+// − / + buttons: click for a small step, hold to keep resizing
+[["sbMinus",-2],["sbPlus",2]].forEach(([id,step])=>{
+  const b=$(id);let t=null;
+  const stop=()=>{clearTimeout(t);clearInterval(t);t=null;};
+  b.addEventListener("pointerdown",e=>{e.preventDefault();const l=selLogo();if(!l)return;setLogoSize(l.w+step);
+    t=setTimeout(()=>{t=setInterval(()=>{const m=selLogo();if(!m)return stop();setLogoSize(m.w+step);},70);},400);});
+  ["pointerup","pointerleave","pointercancel"].forEach(ev=>b.addEventListener(ev,stop));
+  b.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();const l=selLogo();if(l)setLogoSize(l.w+step);}});
+});
 $("lRot").oninput=e=>{const l=selLogo();if(l){l.rot=+e.target.value;renderAll();}};
 $("lBg").onchange=e=>{const l=selLogo();if(l){l.bg=e.target.checked;reprocess(l);}};
 $("lTol").oninput=e=>{const l=selLogo();if(l){l.tol=+e.target.value;clearTimeout(tolTimer);tolTimer=setTimeout(()=>reprocess(l),120);}};
