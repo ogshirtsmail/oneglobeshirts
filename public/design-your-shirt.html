@@ -61,6 +61,9 @@ input[type=number]{width:80px}
 .sb-hint{text-align:center;color:var(--mute);font-size:.85rem;min-height:44px;margin:0 0 10px;display:flex;align-items:center;justify-content:center}
 .sb-hint[hidden]{display:none}
 .finals figcaption{font-weight:600;margin-top:6px} .finals figure{margin:0}
+.combo{margin:8px auto 14px;max-width:760px}
+.combo canvas{border:1px solid var(--line);border-radius:10px}
+.combo figcaption{font-weight:600;margin-top:6px}
 </style>
 </head>
 <body>
@@ -227,11 +230,13 @@ input[type=number]{width:80px}
       <figure><canvas id="cvRight" role="img" aria-label="Completed right side"></canvas><figcaption>Right side</figcaption></figure>
       <figure><canvas id="cvBack" role="img" aria-label="Completed back"></canvas><figcaption>Back</figcaption></figure>
     </div>
+    <figure class="combo"><canvas id="cvCombo" role="img" aria-label="Front and back with sleeve logos"></canvas><figcaption>Front &amp; back with sleeve logos</figcaption></figure>
     <div class="row" style="justify-content:center">
       <button type="button" class="dl" id="dlFront">Download front</button>
       <button type="button" class="dl" id="dlLeft">Download left side</button>
       <button type="button" class="dl" id="dlRight">Download right side</button>
       <button type="button" class="dl" id="dlBack">Download back</button>
+      <button type="button" class="dl" id="dlCombo">Download front &amp; back with sleeve logos</button>
       <button type="button" class="dl" id="dlBoth">Download all views</button>
     </div>
   </section>
@@ -478,7 +483,33 @@ function drawSideView(c){
   }
   c.restore();
 }
-function drawSide(cv,side,scale,editor){
+// Draws the left/right side logos that sit on the sleeve onto the sleeves of the front or back picture.
+// Front view: the wearer's left sleeve is on the viewer's right. Back view: it is on the viewer's left.
+function drawSleeveLogos(c,view){
+  const g=geo(),sg=sideGeo(),lerp=(a,b,t)=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
+  const sTop=50,sLen=sg.end-sTop,sideW0=sg.sleeve.tb[0]-sg.sleeve.tf[0],sideW1=sg.sleeve.eb[0]-sg.sleeve.ef[0];
+  ["left","right"].forEach(side=>{
+    const logos=state.sides[side].logos;if(!logos.length)return;
+    const mirror=(view==="front")===(side==="left");           // draw on the viewer's right half?
+    const X=p=>mirror?[W-p[0],p[1]]:p;
+    const sh=X(g.sh),top=X(g.top),bot=X(g.bot),pit=X(g.pit);
+    const a0=lerp(sh,pit,.5),a1=lerp(top,bot,.5),ang=Math.atan2(a1[1]-a0[1],a1[0]-a0[0]);
+    // sleeve width measured straight across the sleeve, at the shoulder end and the cuff end
+    const across=(p,q)=>Math.abs((q[0]-p[0])*Math.sin(ang)-(q[1]-p[1])*Math.cos(ang)),fw0=across(sh,pit),fw1=across(top,bot);
+    c.save();
+    c.beginPath();c.moveTo(...sh);c.lineTo(...top);c.lineTo(...bot);c.lineTo(...pit);c.closePath();c.clip();
+    logos.forEach(l=>{
+      const t=(H*l.y/100-sTop)/sLen;if(t<-.15||t>1.1)return;    // only logos that are on the sleeve
+      const tc=clamp(t,0,1),fw=fw0+(fw1-fw0)*tc,sw=sideW0+(sideW1-sideW0)*tc;
+      const pos=lerp(a0,a1,t),u=(W*l.x/100-sg.cx)/(sw/2)*(fw/2)*.5;
+      const px=pos[0]-Math.sin(ang)*u,py=pos[1]+Math.cos(ang)*u;
+      const w=Math.min(W*l.w/100*fw/sw,fw*.85),h=w*l.img.naturalHeight/l.img.naturalWidth;
+      c.save();c.translate(px,py);c.rotate(ang-Math.PI/2+l.rot*Math.PI/180);c.drawImage(l.img,-w/2,-h/2,w,h);c.restore();
+    });
+    c.restore();
+  });
+}
+function drawSide(cv,side,scale,editor,withSleeves){
   cv.width=W*scale;cv.height=H*scale;
   const c=cv.getContext("2d");c.setTransform(scale,0,0,scale,0,0);
   const S=state.sides[side];
@@ -495,6 +526,7 @@ function drawSide(cv,side,scale,editor){
     if(state.ribbon==="With ribbon")drawRibbon(c);
     if(state.collar==="With collar")drawCollar(c,side);
   }
+  if(withSleeves&&!S.base)drawSleeveLogos(c,side);
   S.logos.forEach(l=>{
     const w=W*l.w/100,h=w*l.img.naturalHeight/l.img.naturalWidth;
     c.save();c.translate(W*l.x/100,H*l.y/100);c.rotate(l.rot*Math.PI/180);
@@ -506,9 +538,22 @@ function drawSide(cv,side,scale,editor){
 function renderAll(){
   drawSide($("ed"),state.side,2,true);
   VIEWS.forEach(([side,,id])=>drawSide($(id),side,1.5));
+  drawCombo();
   const n=side=>state.sides[side].logos.length,f=n("front"),b=n("back"),lf=n("left"),rt=n("right");
   $("cap").textContent=`${state.fit} · ${state.color[0]} ${state.fabric.toLowerCase()} ${state.sleeve.toLowerCase()}${state.collar==="With collar"?" · collar: "+(state.collarColor?state.collarColor[0]:"matches shirt")+" · "+state.buttons.toLowerCase():" · no collar"}${state.ribbon==="With ribbon"?" · "+state.ribbonColor[0].toLowerCase()+" sleeve ribbon":""} · Size ${state.size||"not chosen yet"} · Qty ${$("qty").value} · ${f} logo${f===1?"":"s"} on front, ${lf} on left side, ${rt} on right side, ${b} on back`;
   $("submit").disabled=!(state.size&&(f+b+lf+rt));
+}
+
+// 5th picture: front and back side by side, with the sleeve logos from the left/right sides
+const comboF=document.createElement("canvas"),comboB=document.createElement("canvas");
+function drawCombo(){
+  const sc=1.5,pad=24,lab=44,cv=$("cvCombo");
+  drawSide(comboF,"front",sc,false,true);drawSide(comboB,"back",sc,false,true);
+  cv.width=comboF.width*2+pad*3;cv.height=comboF.height+pad*2+lab;
+  const c=cv.getContext("2d");c.fillStyle="#ffffff";c.fillRect(0,0,cv.width,cv.height);
+  c.drawImage(comboF,pad,pad);c.drawImage(comboB,pad*2+comboF.width,pad);
+  c.fillStyle="#1d1d1f";c.font="600 22px system-ui,-apple-system,Segoe UI,sans-serif";c.textAlign="center";
+  c.fillText("Front",pad+comboF.width/2,cv.height-pad);c.fillText("Back",pad*2+comboF.width*1.5,cv.height-pad);
 }
 
 // ---- Logos ----
@@ -723,6 +768,7 @@ $("dlFront").onclick=()=>save($("cvFront"),"shirt-front.png");
 $("dlLeft").onclick=()=>save($("cvLeft"),"shirt-left-side.png");
 $("dlRight").onclick=()=>save($("cvRight"),"shirt-right-side.png");
 $("dlBack").onclick=()=>save($("cvBack"),"shirt-back.png");
+$("dlCombo").onclick=()=>save($("cvCombo"),"shirt-front-back-sleeves.png");
 $("dlBoth").onclick=()=>{
   const cvs=VIEWS.map(v=>$(v[2])),c=document.createElement("canvas");
   c.width=cvs.reduce((a,v)=>a+v.width,0);c.height=Math.max(...cvs.map(v=>v.height));
@@ -747,6 +793,7 @@ $("submit").onclick=async()=>{
   for(const [k,,id] of VIEWS){
     const b=await new Promise(r=>$(id).toBlob(r));if(b)data.append(k+"_preview",b,k+"-preview.png");
   }
+  {const b=await new Promise(r=>$("cvCombo").toBlob(r));if(b)data.append("front_back_sleeves_preview",b,"front-back-sleeves-preview.png");}
   const sum=`For: ${state.fit}\nType: ${state.sleeve}\nFabric: ${state.fabric}\nCollar: ${state.collar==="With collar"?"Yes, "+(state.collarColor?state.collarColor[0]:"matches shirt"):"No"}\n${state.collar==="With collar"?"Buttons: "+(state.buttons==="With buttons"?"Yes":"No")+"\n":""}Sleeve ribbon: ${state.ribbon==="With ribbon"?state.ribbonColor[0]:"No"}\nColour: ${state.color[0]}\nSize: ${state.size}\nQuantity: ${$("qty").value}\n`+lines.join("\n");
   if(ORDER_ENDPOINT){
     $("submit").disabled=true;
